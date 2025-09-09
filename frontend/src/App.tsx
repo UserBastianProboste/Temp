@@ -5,8 +5,6 @@ import DashboardEstudiante from "./pages/dashboardEstudiante";
 import DashboardCoordinador from "./pages/dashboardCoordinador";
 import FichasPracticas from "./pages/fichasPracticas";
 import Empresas from "./pages/empresas";
-import FichasPracticas from "./pages/fichasPracticas";
-import Empresas from "./pages/empresas";
 
 function App() {
   const isLoggedIn = !!localStorage.getItem("token");

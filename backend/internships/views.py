@@ -69,10 +69,9 @@ class FichaPracticaListCreateView(generics.ListCreateAPIView):
         return FichaPractica.objects.filter(estudiante=user)
 
 class AlertView(APIView):
-    """Send an alert email to the user.
-
-    If no ``email`` is provided in the request body, the authenticated user's
-    email address is used. The default message is ``Aviso Alarma``.
+    """
+    Envia una alarma email al usuario.
+     ``Aviso Alarma``.
     """
 
     permission_classes = [IsAuthenticated]
