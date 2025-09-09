@@ -3,6 +3,8 @@ import Login from "./pages/login";
 import RegisterEstudiante from "./pages/registerEstudiantes";
 import DashboardEstudiante from "./pages/dashboardEstudiante";
 import DashboardCoordinador from "./pages/dashboardCoordinador";
+import FichasPracticas from "./pages/fichasPracticas";
+import Empresas from "./pages/empresas";
 
 function App() {
   const isLoggedIn = !!localStorage.getItem("token");
@@ -32,7 +34,38 @@ function App() {
           }
         />
 
-        <Route path="/" element={<Login />} />
+        <Route
+          path="/fichas-practicas"
+          element={
+            isLoggedIn && rol === "estudiante"
+              ? <FichasPracticas />
+              : <Navigate to="/login" />
+          }
+        />
+
+        <Route
+          path="/empresas"
+          element={
+            isLoggedIn && rol === "estudiante"
+              ? <Empresas />
+              : <Navigate to="/login" />
+          }
+        />
+
+        <Route
+          path="/"
+          element={
+            isLoggedIn
+              ? (
+                  rol === "coordinador" ? (
+                    <Navigate to="/dashboard-coordinador" />
+                  ) : (
+                    <Navigate to="/dashboard-estudiante" />
+                  )
+                )
+              : <Login />
+          }
+        />
       </Routes>
     </Router>
   );

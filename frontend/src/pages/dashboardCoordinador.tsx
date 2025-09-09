@@ -1,10 +1,10 @@
-import React from "react";
+import DashboardTemplate from "../components/DashboardTemplate";
 
 export default function DashboardCoordinador(){
     return(
-        <div>
+        <DashboardTemplate title="Panel de coordinador">
             <h2>Dashboard Coordinador</h2>
             <p>hola</p>
-        </div>
+        </DashboardTemplate>
     )
 }

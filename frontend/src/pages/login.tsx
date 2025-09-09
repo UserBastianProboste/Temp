@@ -25,25 +25,27 @@ export default function Login(){
                 }),
             });
             const data = await response.json();
-            // Después de la línea donde obtienes data
             console.log("Respuesta completa:", data);
-            console.log("Token guardado:", data.access);
-            console.log("Tipo de usuario:", data.tipo_usuario);
-            if (response.ok && data.access){
-                localStorage.setItem("token",data.access);
-                localStorage.setItem("refresh",data.refresh);
-                localStorage.setItem("rol",data.tipo_usuario);
-                localStorage.setItem("username",data.username);
-                localStorage.setItem("email",data.email);
+            const rol = data.tipo_usuario?.toLowerCase()?.trim();
+            console.log("Tipo de usuario:", rol);
+
+            if (response.ok && data.access && rol) {
+                localStorage.setItem("token", data.access);
+                localStorage.setItem("refresh", data.refresh);
+                localStorage.setItem("rol", rol);
+                localStorage.setItem("username", data.username);
+                localStorage.setItem("email", data.email);
 
                 // Redirigir segun el rol
-                if(data.tipo_usuario === "coordinador"){
+                if (rol === "coordinador") {
                   navigate("/dashboard-coordinador");
-                }else{
+                } else if (rol === "estudiante") {
                   navigate("/dashboard-estudiante");
+                } else {
+                  setError("Rol no reconocido");
                 }
-            }else{
-                setError(data.detail ||data.error || 'credenciales incorrectas')
+            } else {
+                setError(data.detail || data.error || 'credenciales incorrectas');
             }
         }catch{
             console.error('error de login:',error)
