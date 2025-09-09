@@ -4,7 +4,8 @@ from .views import (
     EmpresaListCreateView,
     EmailTokenObtainPairView,
     RegisterView,
-    FichaPracticaListCreateView
+    FichaPracticaListCreateView,
+    AlertView,
 )
 
 
@@ -14,4 +15,5 @@ urlpatterns = [
  path('login/',EmailTokenObtainPairView.as_view(),name='token_obtain_pair'),
  path('register/',RegisterView.as_view(),name='register'),
  path('fichas-practicas/',FichaPracticaListCreateView.as_view(),name='fichas-practicas-list'),
+ path('alert/', AlertView.as_view(), name='alert'),
 ]

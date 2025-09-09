@@ -4,6 +4,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import CustomUser, Empresa, FichaPractica
+from django.core.mail import send_mail
+from django.conf import settings
 from .serializers import (
     CustomUserSerializer, 
     RegisterSerializer, 
@@ -64,4 +66,19 @@ class FichaPracticaListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         if user.rol == 'coordinador':
             return FichaPractica.objects.all()
-        return FichaPractica.objects.filter(estudiante=user)
+            return FichaPractica.objects.filter(estudiante=user)
+
+    class AlertView(APIView):
+        permission_classes = [IsAuthenticated]
+
+        def post(self, request):
+            email = request.data.get('email') or request.user.email
+            message = request.data.get('message', 'Aviso Alarma')
+            send_mail(
+                subject='Alarma',
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return Response({'status': 'sent'})
