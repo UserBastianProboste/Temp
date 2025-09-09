@@ -6,6 +6,15 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    strictPort: true,
     allowedHosts: ["ua.bastianproboste.work"],
+
+
+    origin: "https://ua.bastianproboste.work",
+    hmr: {
+      protocol: "wss",
+      host: "ua.bastianproboste.work",
+      port: 443,
+    },
   },
 });

@@ -26,7 +26,22 @@ SECRET_KEY = 'django-insecure-3if1%fpv)9l_bl5!liqe^)*+(f&6ncs$drik*rcut!5rav@_v+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [
+    "localhost", "127.0.0.1",
+    "api.bastianproboste.work",
+    "ua.bastianproboste.work",
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://ua.bastianproboste.work",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://ua.bastianproboste.work",
+    "https://api.bastianproboste.work",
+]
+
 
 REST_FRAMEWORK= {
     'DEFAULT_AUTHENTICATION_CLASSES':[
@@ -60,7 +75,6 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware'
 ]
 CORS_ALLOW_ALL_ORIGINS = True
-
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
