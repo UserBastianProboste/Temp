@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, TextField, Typography, Link, Alert ,CircularProgress} from "@mui/material";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login(){
     const [email,setEmail] = useState("")
@@ -8,6 +9,7 @@ export default function Login(){
     const [error,setError] = useState("")
     const [loading,setLoading] = useState(false);
     const navigate = useNavigate();
+    const { setAuth } = useAuth();
 
     const handleSubmit = async (e:React.FormEvent)=>{
         e.preventDefault();
@@ -35,6 +37,8 @@ export default function Login(){
                 localStorage.setItem("rol", rol);
                 localStorage.setItem("username", data.username);
                 localStorage.setItem("email", data.email);
+
+                setAuth({ token: data.access, rol });
 
                 // Redirigir segun el rol
                 if (rol === "coordinador") {
