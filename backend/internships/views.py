@@ -66,19 +66,25 @@ class FichaPracticaListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         if user.rol == 'coordinador':
             return FichaPractica.objects.all()
-            return FichaPractica.objects.filter(estudiante=user)
+        return FichaPractica.objects.filter(estudiante=user)
 
-    class AlertView(APIView):
-        permission_classes = [IsAuthenticated]
+class AlertView(APIView):
+    """Send an alert email to the user.
 
-        def post(self, request):
-            email = request.data.get('email') or request.user.email
-            message = request.data.get('message', 'Aviso Alarma')
-            send_mail(
-                subject='Alarma',
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            return Response({'status': 'sent'})
+    If no ``email`` is provided in the request body, the authenticated user's
+    email address is used. The default message is ``Aviso Alarma``.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        email = request.data.get('email') or request.user.email
+        message = request.data.get('message', 'Aviso Alarma')
+        send_mail(
+            subject='Alarma',
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return Response({'status': 'sent'})
