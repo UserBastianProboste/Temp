@@ -1,11 +1,12 @@
 # Frontend development Dockerfile
-FROM node:18
+FROM node:20
 
 WORKDIR /app
 
-# Copy only package.json to avoid cross-platform lockfile issues
-COPY package.json ./
-RUN npm install && npm cache clean --force
+ENV NODE_ENV=development
+
+COPY package.json package-lock.json* ./
+RUN npm install
 
 COPY . .
 

@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-3if1%fpv)9l_bl5!liqe^)*+(f&6ncs$drik*rcut!5rav@_v+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1"]
 
 REST_FRAMEWORK= {
     'DEFAULT_AUTHENTICATION_CLASSES':[
@@ -90,8 +90,8 @@ DATABASES = {
         'NAME': 'consultoria',
         'USER': 'postgres',
         'PASSWORD': '2310',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        "HOST": os.getenv("DB_HOST", "db"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
