@@ -3,6 +3,7 @@ import Login from "./pages/login";
 import RegisterEstudiante from "./pages/registerEstudiantes";
 import DashboardEstudiante from "./pages/dashboardEstudiante";
 import DashboardCoordinador from "./pages/dashboardCoordinador";
+import FichasPracticas from "./pages/fichasPracticas";
 
 function App() {
   const isLoggedIn = !!localStorage.getItem("token");
@@ -28,6 +29,15 @@ function App() {
           element={
             isLoggedIn && rol === "coordinador"
               ? <DashboardCoordinador />
+              : <Navigate to="/login" />
+          }
+        />
+
+        <Route
+          path="/fichas-practicas"
+          element={
+            isLoggedIn && rol === "estudiante"
+              ? <FichasPracticas />
               : <Navigate to="/login" />
           }
         />
