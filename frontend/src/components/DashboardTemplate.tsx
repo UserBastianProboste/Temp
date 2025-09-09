@@ -5,6 +5,7 @@ import {
 import type { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import useAuth from "../hooks/useAuth";
 // Necesitarás importar iconos, por ejemplo:
 // import DashboardIcon from '@mui/icons-material/Dashboard';
 // import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -19,13 +20,7 @@ interface DashboardTemplateProps {
 export default function DashboardTemplate({ title, children }: DashboardTemplateProps) {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const username = localStorage.getItem('username') || 'Usuario';
-  const userRole = localStorage.getItem('rol');
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
+  const { rol, username, logout } = useAuth();
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
@@ -59,7 +54,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
         <Toolbar />
         <Box sx={{ overflow: 'auto', mt: 2 }}>
           <List>
-            {userRole === "estudiante" && (
+            {rol === "estudiante" && (
               <>
                 <ListItem disablePadding>
                   <ListItemButton component={Link} to="/dashboard-estudiante">
@@ -81,7 +76,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
                 </ListItem>
               </>
             )}
-            {userRole === "coordinador" && (
+            {rol === "coordinador" && (
               <ListItem disablePadding>
                 <ListItemButton component={Link} to="/dashboard-coordinador">
                   <ListItemText primary="Dashboard" />
@@ -111,10 +106,10 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
             
             {/* Indicador de usuario actual */}
             <Typography variant="body2" color="inherit" sx={{ mr: 2 }}>
-              {username} ({userRole})
+              {username} ({rol})
             </Typography>
             
-            <Button color="inherit" onClick={handleLogout}>
+            <Button color="inherit" onClick={logout}>
               Cerrar Sesión
             </Button>
           </Toolbar>
