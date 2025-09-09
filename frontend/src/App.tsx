@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./pages/login";
 import RegisterEstudiante from "./pages/registerEstudiantes";
 import DashboardEstudiante from "./pages/dashboardEstudiante";
-import DashboardProfesor from "./pages/dashboardCoordinador";
+import DashboardCoordinador from "./pages/dashboardCoordinador";
 
 
 function App() {
@@ -23,9 +23,9 @@ function App() {
             )
          }
          />
-        <Route path="/dashboard-coordiandor" element={ isLoggedIn && rol === 'coordinador'
+        <Route path="/dashboard-coordinador" element={ isLoggedIn && rol === 'coordinador'
             ? (
-            <DashboardProfesor />
+            <DashboardCoordinador />
             ): (
             <Navigate to='/login'/>
             )
