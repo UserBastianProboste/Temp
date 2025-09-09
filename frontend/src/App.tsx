@@ -6,6 +6,7 @@ import DashboardCoordinador from "./pages/dashboardCoordinador";
 import FichasPracticas from "./pages/fichasPracticas";
 import Empresas from "./pages/empresas";
 
+
 function App() {
   const isLoggedIn = !!localStorage.getItem("token");
   const rol = localStorage.getItem("rol");
@@ -42,7 +43,6 @@ function App() {
               : <Navigate to="/login" />
           }
         />
-
         <Route
           path="/empresas"
           element={
@@ -52,10 +52,3 @@ function App() {
           }
         />
 
-        <Route path="/" element={<Login />} />
-      </Routes>
-    </Router>
-  );
-}
-
-export default App;
