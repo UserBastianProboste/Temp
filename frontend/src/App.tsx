@@ -5,10 +5,11 @@ import DashboardEstudiante from "./pages/dashboardEstudiante";
 import DashboardCoordinador from "./pages/dashboardCoordinador";
 import FichasPracticas from "./pages/fichasPracticas";
 import Empresas from "./pages/empresas";
+import { useAuth } from "./context/AuthContext";
 
 function App() {
-  const isLoggedIn = !!localStorage.getItem("token");
-  const rol = localStorage.getItem("rol");
+  const { token, rol } = useAuth();
+  const isLoggedIn = !!token;
 
   return (
     <Router>
