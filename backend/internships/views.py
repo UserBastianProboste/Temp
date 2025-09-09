@@ -69,11 +69,6 @@ class FichaPracticaListCreateView(generics.ListCreateAPIView):
         return FichaPractica.objects.filter(estudiante=user)
 
 class AlertView(APIView):
-    """
-    Envia una alarma email al usuario.
-     ``Aviso Alarma``.
-    """
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

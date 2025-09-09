@@ -3,8 +3,9 @@ FROM node:18
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+# Copy only package.json to avoid cross-platform lockfile issues
+COPY package.json ./
+RUN npm install && npm cache clean --force
 
 COPY . .
 

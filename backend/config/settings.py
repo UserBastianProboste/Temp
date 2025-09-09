@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -93,6 +94,13 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
+# Allow switching to SQLite for test execution when PostgreSQL isn't available.
+if os.environ.get("USE_SQLITE_FOR_TESTS"):
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 
 
 # Password validation

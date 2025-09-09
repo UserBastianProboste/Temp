@@ -19,66 +19,51 @@ function App() {
         <Route
           path="/dashboard-estudiante"
           element={
-            isLoggedIn && rol === "estudiante"
-              ? <DashboardEstudiante />
-              : <Navigate to="/login" />
+            isLoggedIn && rol === "estudiante" ? (
+              <DashboardEstudiante />
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
 
         <Route
           path="/dashboard-coordinador"
           element={
-            isLoggedIn && rol === "coordinador"
-              ? <DashboardCoordinador />
-              : <Navigate to="/login" />
+            isLoggedIn && rol === "coordinador" ? (
+              <DashboardCoordinador />
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
 
         <Route
           path="/fichas-practicas"
           element={
-            isLoggedIn && rol === "estudiante"
-              ? <FichasPracticas />
-              : <Navigate to="/login" />
-          }
-        />
-        <Route
-          path="/empresas"
-          element={
-            isLoggedIn && rol === "estudiante"
-              ? <Empresas />
-              : <Navigate to="/login" />
-          }
-        />
-        <Route
-          path="/fichas-practicas"
-          element={
-            isLoggedIn && rol === "estudiante"
-              ? <FichasPracticas />
-              : <Navigate to="/login" />
-          }
-        />
-        <Route
-          path="/empresas"
-          element={
-            isLoggedIn && rol === "estudiante"
-              ? <Empresas />
-              : <Navigate to="/login" />
+            isLoggedIn && rol === "estudiante" ? (
+              <FichasPracticas />
+            ) : (
+              <Navigate to="/login" />
+            )
           }
         />
 
         <Route
-          path="/"
+          path="/empresas"
           element={
-            isLoggedIn
-              ? (
-                  rol === "coordinador" ? (
-                    <Navigate to="/dashboard-coordinador" />
-                  ) : (
-                    <Navigate to="/dashboard-estudiante" />
-                  )
-                )
-              : <Login />
+            isLoggedIn && rol === "estudiante" ? (
+              <Empresas />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="*"
+          element={
+            <Navigate to={isLoggedIn ? "/dashboard-estudiante" : "/login"} />
           }
         />
       </Routes>
