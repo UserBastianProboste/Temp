@@ -64,7 +64,15 @@ function App() {
         <Route
           path="*"
           element={
-            <Navigate to={isLoggedIn ? "/dashboard-estudiante" : "/login"} />
+            <Navigate
+              to={
+                isLoggedIn
+                  ? rol === "coordinador"
+                    ? "/dashboard-coordinador"
+                    : "/dashboard-estudiante"
+                  : "/login"
+              }
+            />
           }
         />
       </Routes>
