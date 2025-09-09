@@ -59,25 +59,36 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
         <Toolbar />
         <Box sx={{ overflow: 'auto', mt: 2 }}>
           <List>
-            <ListItem disablePadding>
-                <ListItemButton component={Link} to="/dashboard-estudiante">
-                {/* <ListItemIcon><DashboardIcon /></ListItemIcon> */}
-                <ListItemText primary="Dashboard" />
+            {userRole === "estudiante" && (
+              <>
+                <ListItem disablePadding>
+                  <ListItemButton component={Link} to="/dashboard-estudiante">
+                    {/* <ListItemIcon><DashboardIcon /></ListItemIcon> */}
+                    <ListItemText primary="Dashboard" />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding>
+                  <ListItemButton component={Link} to="/fichas-practicas">
+                    {/* <ListItemIcon><AssignmentIcon /></ListItemIcon> */}
+                    <ListItemText primary="Mis Prácticas" />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding>
+                  <ListItemButton component={Link} to="/empresas">
+                    {/* <ListItemIcon><BusinessIcon /></ListItemIcon> */}
+                    <ListItemText primary="Empresas" />
+                  </ListItemButton>
+                </ListItem>
+              </>
+            )}
+            {userRole === "coordinador" && (
+              <ListItem disablePadding>
+                <ListItemButton component={Link} to="/dashboard-coordinador">
+                  <ListItemText primary="Dashboard" />
                 </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-                <ListItemButton component={Link} to="/fichas-practicas">
-                {/* <ListItemIcon><AssignmentIcon /></ListItemIcon> */}
-                <ListItemText primary="Mis Prácticas" />
-                </ListItemButton>
-            </ListItem>
-            <ListItem disablePadding>
-                <ListItemButton component={Link} to="/empresas">
-                {/* <ListItemIcon><BusinessIcon /></ListItemIcon> */}
-                <ListItemText primary="Empresas" />
-                </ListItemButton>
-            </ListItem>
-            </List>
+              </ListItem>
+            )}
+          </List>
         </Box>
       </Drawer>
 
