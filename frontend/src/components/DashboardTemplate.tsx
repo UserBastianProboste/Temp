@@ -1,132 +1,147 @@
 import {
- AppBar, Toolbar, Typography, Button, Box, Container, Drawer, List,
-  ListItem,ListItemButton, ListItemText, IconButton
-} from "@mui/material";
-import type { ReactNode } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
-import useAuth from "../hooks/useAuth";
-// Necesitarás importar iconos, por ejemplo:
-// import DashboardIcon from '@mui/icons-material/Dashboard';
-// import AssignmentIcon from '@mui/icons-material/Assignment';
-// import BusinessIcon from '@mui/icons-material/Business';
-// import MenuIcon from '@mui/icons-material/Menu';
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Container,
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
+  Divider
+} from '@mui/material';
+import {
+  Dashboard as DashboardIcon,
+  Assignment as AssignmentIcon,
+  Business as BusinessIcon,
+  Group as GroupIcon,
+  Menu as MenuIcon
+} from '@mui/icons-material';
+import { useState } from 'react';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 interface DashboardTemplateProps {
   title: string;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export default function DashboardTemplate({ title, children }: DashboardTemplateProps) {
-  const navigate = useNavigate();
+  const { user, role, logout, loading } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(true);
-  const { rol, username, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const toggleDrawer = () => {
-    setDrawerOpen(!drawerOpen);
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
-  // Verifica autenticación
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    console.log('token en dashboard:',token)
-    if (!token) {
-      navigate('/login');
-    }
-  }, [navigate]);
+  const menuEstudiante = [
+    { label: 'Dashboard', icon: <DashboardIcon />, to: '/dashboard-estudiante' },
+    { label: 'Mis Prácticas', icon: <AssignmentIcon />, to: '/mis-practicas' },
+    { label: 'Empresas', icon: <BusinessIcon />, to: '/empresas' }
+  ];
+
+  const menuCoordinador = [
+    { label: 'Dashboard', icon: <DashboardIcon />, to: '/dashboard-coordinador' },
+    { label: 'Prácticas', icon: <AssignmentIcon />, to: '/practicas' },
+    { label: 'Estudiantes', icon: <GroupIcon />, to: '/estudiantes' },
+    { label: 'Empresas', icon: <BusinessIcon />, to: '/empresas' }
+  ];
+
+  const items = role === 'coordinador' ? menuCoordinador : menuEstudiante;
+
+  if (loading) {
+    return (
+      <Box display="flex" alignItems="center" justifyContent="center" minHeight="100vh">
+        <Typography>Cargando...</Typography>
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return null; // ProtectedRoute se encarga de redirigir
+  }
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Menú lateral */}
       <Drawer
         variant="permanent"
         open={drawerOpen}
         sx={{
-          width: drawerOpen ? 240 : 70,
+          width: drawerOpen ? 240 : 72,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
-            width: drawerOpen ? 240 : 70,
+            width: drawerOpen ? 240 : 72,
             transition: 'width 0.2s',
             overflowX: 'hidden'
-          },
+          }
         }}
       >
         <Toolbar />
-        <Box sx={{ overflow: 'auto', mt: 2 }}>
-          <List>
-            {rol === "estudiante" && (
-              <>
-                <ListItem disablePadding>
-                  <ListItemButton component={Link} to="/dashboard-estudiante">
-                    {/* <ListItemIcon><DashboardIcon /></ListItemIcon> */}
-                    <ListItemText primary="Dashboard" />
-                  </ListItemButton>
-                </ListItem>
-                <ListItem disablePadding>
-                  <ListItemButton component={Link} to="/fichas-practicas">
-                    {/* <ListItemIcon><AssignmentIcon /></ListItemIcon> */}
-                    <ListItemText primary="Mis Prácticas" />
-                  </ListItemButton>
-                </ListItem>
-                <ListItem disablePadding>
-                  <ListItemButton component={Link} to="/empresas">
-                    {/* <ListItemIcon><BusinessIcon /></ListItemIcon> */}
-                    <ListItemText primary="Empresas" />
-                  </ListItemButton>
-                </ListItem>
-              </>
-            )}
-            {rol === "coordinador" && (
-              <ListItem disablePadding>
-                <ListItemButton component={Link} to="/dashboard-coordinador">
-                  <ListItemText primary="Dashboard" />
-                </ListItemButton>
-              </ListItem>
-            )}
-          </List>
-        </Box>
+        <Divider />
+        <List sx={{ mt: 1 }}>
+          {items.map(item => {
+            const active = location.pathname === item.to;
+            return (
+              <ListItemButton
+                key={item.to}
+                component={RouterLink}
+                to={item.to}
+                selected={active}
+                sx={{
+                  borderRadius: 1,
+                  mx: 1,
+                  mb: 0.5,
+                  ...(active && {
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                    '& .MuiListItemIcon-root': { color: 'primary.contrastText' }
+                  })
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                {drawerOpen && <ListItemText primary={item.label} />}
+              </ListItemButton>
+            );
+          })}
+        </List>
       </Drawer>
 
-      {/* Contenido principal */}
       <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <AppBar position="fixed" sx={{ zIndex: theme => theme.zIndex.drawer + 1 }}>
           <Toolbar>
             <IconButton
               color="inherit"
               aria-label="toggle drawer"
-              onClick={toggleDrawer}
+              onClick={() => setDrawerOpen(o => !o)}
               edge="start"
               sx={{ mr: 2 }}
             >
-              {/* <MenuIcon /> */}
+              <MenuIcon />
             </IconButton>
             <Typography variant="h6" sx={{ flexGrow: 1 }}>
               {title}
             </Typography>
-            
-            {/* Indicador de usuario actual */}
-            <Typography variant="body2" color="inherit" sx={{ mr: 2 }}>
-              {username} ({rol})
+            <Typography variant="body2" sx={{ mr: 2 }}>
+              {user.user_metadata?.full_name || user.email} ({role})
             </Typography>
-            
-            <Button color="inherit" onClick={logout}>
+            <Button color="inherit" onClick={handleLogout}>
               Cerrar Sesión
             </Button>
           </Toolbar>
         </AppBar>
-        <Toolbar /> {/* Espaciador para compensar la AppBar fija */}
-        
-        <Container sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
-          {children}
-        </Container>
-        
-        {/* Footer */}
-        <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', bgcolor: '#f0f0f0' }}>
-          <Container maxWidth="lg">
+        <Toolbar />
+        <Container sx={{ mt: 4, mb: 4, flexGrow: 1 }}>{children}</Container>
+        <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', bgcolor: 'grey.100' }}>
             <Typography variant="body2" color="text.secondary" align="center">
               © {new Date().getFullYear()} Sistema de Gestión de Prácticas Profesionales
             </Typography>
-          </Container>
         </Box>
       </Box>
     </Box>

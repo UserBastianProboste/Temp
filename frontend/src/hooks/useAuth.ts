@@ -1,22 +1,8 @@
-import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 
-interface AuthResult {
-  rol: string | null;
-  username: string;
-  logout: () => void;
-}
-
-export default function useAuth(): AuthResult {
-  const navigate = useNavigate();
-
-  const rol = localStorage.getItem("rol");
-  const username = localStorage.getItem("username") || "Usuario";
-
-  const logout = useCallback(() => {
-    localStorage.clear();
-    navigate("/login");
-  }, [navigate]);
-
-  return { rol, username, logout };
-}
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
+};

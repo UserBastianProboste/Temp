@@ -1,213 +1,313 @@
-import { useState } from "react";
-import { Box,Button,TextField,Typography,Alert,CircularProgress,Grid} from "@mui/material"
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  Grid,
+  CircularProgress,
+  InputAdornment
+} from '@mui/material';
+import {
+  Person,
+  Email,
+  Phone,
+  School
+} from '@mui/icons-material';
+import { authService } from '../services/authService';
+import { estudianteService } from '../services/estudianteService';
 
-import { useNavigate } from "react-router-dom";
+const RegisterEstudiantes: React.FC = () => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    nombre: '',
+    apellido: '',
+    telefono: '',
+    carrera: '',
 
-export default function RegisterEstudiante(){
-    const [firstName,setFirstName] = useState("")
-    const [lastName,setLastName] = useState("")
-    const[email,setEmail] = useState("");
-    const[carrera,setCarrera] = useState("");
-    const[password,setPassword] = useState("")
-    const[rut,setRut] = useState("")
-    const[telefono,setTelefono] = useState("")
-    const[direccion,setDireccion] = useState("")
-    const[error,setError] = useState("");
-    const[success,setSuccess] = useState("");
-    const[loading,setLoading] = useState(false);
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-    const navigate = useNavigate();
-    const validateEmail = (email:string)=> /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]:value
+    }));
+  };
 
-    const handleSubmit = async (e:React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setSuccess("");
-        setLoading(true);
-
-        if(!firstName.trim()){
-            setError("El nombre es obligatorio")
-            setLoading(false);
-            return;
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    if (formData.password.trim().length < 8){
+      setError('La contraseña debe tener al menos 8 caracteres');
+      setLoading(false);
+      return;
+    }
+    try {
+      console.log('=== INICIANDO REGISTRO ===');
+      console.log('Datos del formulario:', formData);
+      
+      // 1. Registrar usuario en Supabase Auth
+      console.log('Paso 1: Registrando usuario en Auth...');
+      const { data: authData, error: authError } = await authService.signUp(
+        formData.email,
+        formData.password,
+        {
+          full_name: `${formData.nombre} ${formData.apellido}`,
+          role: 'estudiante'
         }
-        if(!lastName.trim()){
-            setError("El Apellido es obligatorio")
-            setLoading(false);
-            return;
-        }
-        if(!validateEmail(email)){
-            setError("El email no es valido")
-            return;
-        }
-        if(!carrera.trim()){
-            setError("El carrera es obligatorio")
-            return;
-        }
-        if(!password.trim()){
-            setError("El password es obligatorio")
-            return;
-        }
-        try{
-            const response = await fetch("http://127.0.0.1:8000/api/register/",{
-                method: 'POST',
-                headers: {
-                    "Content-Type":"application/json",
-                },
-                body: JSON.stringify({
-                    email,
-                    password,
-                    firstName: firstName,
-                    lastName:lastName,
-                    carrera,
-                    rut,
-                    telefono,
-                    direccion,
-                    
-                    
-                }),
+      );
 
-            });
+      console.log('Resultado Auth:', { authData, authError });
 
-            const data = await response.json()
-            if (response.ok){
-                setSuccess("Estudiante Registrado correctamente");
-                setTimeout(() => navigate('/login'), 2000);
-            } else {
-                setError(data.detail || data.username || data.email || 'Error en el registro');
-                        }
-        }catch{
-            console.error('error de registro:',error)
-            setError("Error de conexion")
-        } finally {
-            setLoading(false);
+      if (authError) {
+        console.error('Error en autenticación:', authError);
+        setError(authError.message);
+        return;
+      }
+
+      if (authData.user) {
+        console.log('Paso 2: Usuario creado, creando perfil...');
+        console.log('User ID:', authData.user.id);
+        
+        // 2. Crear perfil de estudiante
+        const { data: estudianteData, error: estudianteError } = await estudianteService.create({
+          user_id: authData.user.id,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          email: formData.email,
+          telefono: formData.telefono,
+          carrera: formData.carrera,
+        });
+
+        console.log('Resultado Estudiante:', { estudianteData, estudianteError });
+
+        if (estudianteError) {
+          console.error('Error al crear perfil de estudiante:', estudianteError);
+          setError(`Error al crear el perfil de estudiante: ${estudianteError.message}`);
+          return;
         }
-    };
-    return(
-        <Box sx={{maxWidth:400,mx:"auto",mt:4,p:4,boxShadow:2,borderRadius:2,bgcolor:"#fff"}}>
-            <Typography variant="h5" align="center" gutterBottom color="secondary">
-             Registro de estudiante
+
+        console.log('=== REGISTRO EXITOSO ===');
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Error en catch:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el registro';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        backgroundColor: 'background.default',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight:'100vh'
+
+      }}
+
+    >
+      <Container maxWidth="md"
+                  sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+  }}
+      >
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            borderRadius: 2,
+            backgroundColor: 'white',
+            margin: '0 auto',
+          }}
+        >
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="h4" color="primary" gutterBottom>
+              Registro de Estudiante
             </Typography>
-            {success && (
-                <Alert severity="success" sx={{my:2}}>
-                    {success}
-                </Alert>
-            )}
-            {error && (
-                <Alert severity="error" sx={{my:2}}>
-                    {error}
-                </Alert>
-            )}
-            <form onSubmit={handleSubmit}>
-        <Grid container spacing={2}>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="Nombre"
-              value={firstName}
-              onChange={e => setFirstName(e.target.value)}
-              fullWidth
-              margin="normal"
-              required
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="Apellido"
-              value={lastName}
-              onChange={e => setLastName(e.target.value)}
-              fullWidth
-              margin="normal"
-              required
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="Correo electrónico"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              fullWidth
-              margin="normal"
-              required
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="Carrera"
-              value={carrera}
-              onChange={e => setCarrera(e.target.value)}
-              fullWidth
-              margin="normal"
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="RUT"
-              value={rut}
-              onChange={e => setRut(e.target.value)}
-              fullWidth
-              margin="normal"
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="Teléfono"
-              value={telefono}
-              onChange={e => setTelefono(e.target.value)}
-              fullWidth
-              margin="normal"
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={{xs:12 ,md:6}}>
-            <TextField
-              label="Dirección"
-              value={direccion}
-              onChange={e => setDireccion(e.target.value)}
-              fullWidth
-              margin="normal"
-              disabled={loading}
-            />
-          </Grid>
-          <Grid size={12}>
-            <TextField
-              label="Contraseña"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              fullWidth
-              margin="normal"
-              required
-              disabled={loading}
-            />
-          </Grid>
-        </Grid>
+            <Typography variant="body1" color="text.secondary">
+              Completa el formulario para crear tu cuenta
+            </Typography>
+          </Box>
 
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Box component="form"  onSubmit={handleRegister} noValidate>
+            <Grid container  spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  name="nombre"
+                  label="Nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  required
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Person color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  name="apellido"
+                  label="Apellido"
+                  value={formData.apellido}
+                  onChange={handleChange}
+                  required
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Person color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  name="email"
+                  type="email"
+                  label="Correo Electrónico"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Email color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  name="password"
+                  type="password"
+                  label="Contraseña"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  fullWidth
+                  inputProps={{ minLength: 8 }}
+                  error={!!error && error.toLowerCase().includes('contraseña')}
+                  helperText={
+                    formData.password && formData.password.length < 8
+                      ? 'Debe tener al menos 8 caracteres'
+                      : 'Mínimo 8 caracteres'
+                  }
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  name="telefono"
+                  type="tel"
+                  label="Teléfono"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Phone color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  name="carrera"
+                  label="Carrera"
+                  value={formData.carrera}
+                  onChange={handleChange}
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <School color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
                 <Button
-                    type="submit"
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    sx={{ mt: 2 }}
-                    disabled={loading}
+                  type="submit"
+                  disabled={
+                    loading ||
+                    !formData.email ||
+                    !formData.nombre ||
+                    !formData.apellido ||
+                    formData.password.length < 8
+                  }
+                  size="large"
+                  fullWidth
+                  sx={{ mt: 2, py: 1.5 }}
                 >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Registrarse'}
+                  {loading ? (
+                    <>
+                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                      Registrando...
+                    </>
+                  ) : (
+                    'Registrar Estudiante'
+                  )}
                 </Button>
+              </Grid>
 
-                <Box textAlign='center' mt={3}>
+              <Grid size={{ xs: 12 }}>
+                <Box sx={{ textAlign: 'center', mt: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    ¿Ya tienes una cuenta?{' '}
                     <Button
-                        onClick={() => navigate('/login')}
-                        color="secondary"
+                      variant="text"
+                      onClick={() => navigate('/login')}
+                      sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
                     >
-                        Ya tengo una cuenta
+                      Inicia sesión aquí
                     </Button>
+                  </Typography>
                 </Box>
-            </form>
-        </Box>
-    );
-}
+              </Grid>
+            </Grid>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
+  );
+};
+
+export default RegisterEstudiantes;

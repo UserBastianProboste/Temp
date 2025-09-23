@@ -1,118 +1,162 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box, Button, TextField, Typography, Link, Alert ,CircularProgress} from "@mui/material";
+import React, { useState } from 'react';
+import { useNavigate,Link } from 'react-router-dom';
+import {
+  Box,
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  InputAdornment,
+  CircularProgress,
+} from '@mui/material';
+import { Email, Lock } from '@mui/icons-material';
+import { authService } from '../services/authService';
 
-export default function Login(){
-    const [email,setEmail] = useState("")
-    const [password,setPassword] = useState("")
-    const [error,setError] = useState("")
-    const [loading,setLoading] = useState(false);
-    const navigate = useNavigate();
+const Login: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e:React.FormEvent)=>{
-        e.preventDefault();
-        setError("")
-        setLoading(true);
-        try{
-            const response = await fetch("http://127.0.0.1:8000/api/login/",{
-                method:"POST",
-                headers:{
-                    "Content-Type":"application/json",
-                },
-                body: JSON.stringify({
-                    email,
-                    password,
-                }),
-            });
-            const data = await response.json();
-            console.log("Respuesta completa:", data);
-            const rol = data.tipo_usuario?.toLowerCase()?.trim();
-            console.log("Tipo de usuario:", rol);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-            if (response.ok && data.access && rol) {
-                localStorage.setItem("token", data.access);
-                localStorage.setItem("refresh", data.refresh);
-                localStorage.setItem("rol", rol);
-                localStorage.setItem("username", data.username);
-                localStorage.setItem("email", data.email);
+    try {
+      const { data, error } = await authService.signIn(email, password);
+      
+      if (error) {
+        setError(error.message);
+        return;
+      }
 
-                // Redirigir segun el rol
-                if (rol === "coordinador") {
-                  navigate("/dashboard-coordinador");
-                } else if (rol === "estudiante") {
-                  navigate("/dashboard-estudiante");
-                } else {
-                  setError("Rol no reconocido");
-                }
-            } else {
-                setError(data.detail || data.error || 'credenciales incorrectas');
-            }
-        }catch{
-            console.error('error de login:',error)
-            setError('Error de conexion con el servidor')
-        }finally{
-            setLoading(false)
+      if (data.user) {
+        const role = data.user.user_metadata?.role;
+        
+        if (role === 'coordinador') {
+          navigate('/dashboard-coordinador');
+        } else if (role === 'estudiante') {
+          navigate('/dashboard-estudiante');
+        } else {
+          navigate('/dashboard');
         }
-    };
-    return(
-        <Box
-            maxWidth={400}
-            mx="auto"
-            mt={8}
-            p={4}
-            borderRadius={2}
-            boxShadow={2}
-            bgcolor={"#fff"}>
-            <Typography variant="h5" align="center" gutterBottom>
-                Iniciar Sesion
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el login';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        backgroundColor: 'background.default',
+        display: 'flex',
+        alignItems: 'center'
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            borderRadius: 2,
+            backgroundColor: 'white'
+          }}
+        >
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="h4" color="primary" gutterBottom>
+              Iniciar Sesión
             </Typography>
-            <form onSubmit={handleSubmit}>
-                <TextField
-                    label='Email'
-                    type="email"
-                    value={email}
-                    onChange={e=>setEmail(e.target.value)}
-                    required
-                    fullWidth
-                    disabled={loading}
-                    margin="normal"
-                    autoComplete="email"
-                    />
-                <TextField
-                    label='Password'
-                    type="password"
-                    value={password}
-                    onChange={e=>setPassword(e.target.value)}
-                    required
-                    fullWidth
-                    margin="normal"
-                    disabled={loading}
-                    autoComplete="current-password"
-                    />
-                    
+            <Typography variant="body1" color="text.secondary">
+              Accede a tu cuenta de consultoría
+            </Typography>
+          </Box>
 
-                <Button 
-                    type="submit"
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    sx={{mt:2}}
-                    disabled={loading}
-                    >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'entrar'}
-                    </Button>
-              
-            </form>
-            {error && 
-                (<Alert severity="error" sx={{mt:2}}>
-                    {error}
-                </Alert>)}
-            <Box textAlign={"center"} mt={3}>
-                <Link href="/registro" underline="hover">
-                    No tienes cuenta registrate aqui
-                </Link>
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Box component="form" onSubmit={handleLogin} noValidate>
+            <TextField
+              type="email"
+              label="Correo Electrónico"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Email color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              type="password"
+              label="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock color="action" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Button
+              type="submit"
+              disabled={loading}
+              size="large"
+              sx={{ mt: 3, py: 1.5 }}
+            >
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  Iniciando sesión...
+                </>
+              ) : (
+                'Iniciar Sesión'
+              )}
+            </Button>
+
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                ¿No tienes una cuenta?{' '}
+                <Button
+                  variant="text"
+                  onClick={() => navigate('/register')}
+                  sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
+                >
+                  Regístrate aquí
+                </Button>
+              </Typography>
             </Box>
-        </Box>
-    );
+            <Box sx={{ textAlign: 'center'}}>
+            <Link to="/forgot-password" style={{ textDecoration: 'none', marginTop: 16, display: 'inline-block' }}>
+              <Typography variant="body2" color="primary">
+                ¿Olvidaste tu contraseña?
+              </Typography>
+            </Link>
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
+  );
+};
 
-}
+export default Login;

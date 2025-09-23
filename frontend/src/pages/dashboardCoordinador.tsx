@@ -1,10 +1,10 @@
-import DashboardTemplate from "../components/DashboardTemplate";
+import React from "react";
 
-export default function DashboardCoordinador(){
+export default function DashboardProfesor(){
     return(
-        <DashboardTemplate title="Panel de coordinador">
-            <h2>Dashboard Coordinador</h2>
+        <div>
+            <h2>Dashboard Profesor</h2>
             <p>hola</p>
-        </DashboardTemplate>
+        </div>
     )
 }

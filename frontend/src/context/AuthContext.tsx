@@ -1,45 +1,75 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode
+} from 'react';
+import type { User } from '@supabase/supabase-js';
+import { supabase } from '../services/supabaseClient';
+import { authService } from '../services/authService';
 
-interface AuthContextType {
-  token: string | null;
-  rol: string | null;
-  setAuth: (token: string, rol: string) => void;
-  logout: () => void;
+interface AuthContextValue {
+  user: User | null;
+  role: 'estudiante' | 'coordinador' | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ error: unknown }>;
+  logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
-  const [rol, setRol] = useState<string | null>(localStorage.getItem("rol"));
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<'estudiante' | 'coordinador' | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const setAuth = (newToken: string, newRol: string) => {
-    localStorage.setItem("token", newToken);
-    localStorage.setItem("rol", newRol);
-    setToken(newToken);
-    setRol(newRol);
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      const u = data.user || null;
+      setUser(u);
+      setRole(u?.user_metadata?.role ?? null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user || null;
+      setUser(u);
+      setRole(u?.user_metadata?.role ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    const { data, error } = await authService.signIn(email, password);
+    if (!error && data.user) {
+      setUser(data.user);
+      setRole(data.user.user_metadata?.role ?? null);
+    }
+    setLoading(false);
+    return { error };
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("rol");
-    setToken(null);
-    setRol(null);
+  const logout = async () => {
+    setLoading(true);
+    await authService.signOut();
+    setUser(null);
+    setRole(null);
+    setLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ token, rol, setAuth, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
-
