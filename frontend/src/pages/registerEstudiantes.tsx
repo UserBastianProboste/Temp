@@ -1,27 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import {
+  Alert,
   Box,
+  Button,
+  CircularProgress,
   Container,
+  Grid,
+  InputAdornment,
   Paper,
   TextField,
-  Button,
   Typography,
-  Alert,
-  Grid,
-  CircularProgress,
-  InputAdornment
 } from '@mui/material';
-import {
-  Person,
-  Email,
-  Phone,
-  School
-} from '@mui/icons-material';
+import { Email, Person, Phone, School } from '@mui/icons-material';
+
 import { authService } from '../services/authService';
 import { estudianteService } from '../services/estudianteService';
 
 const RegisterEstudiantes: React.FC = () => {
+  // === Estado local ===
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -29,34 +27,38 @@ const RegisterEstudiantes: React.FC = () => {
     apellido: '',
     telefono: '',
     carrera: '',
-
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  // === Manejadores de eventos ===
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
     setFormData(prev => ({
       ...prev,
-      [name]:value
+      [name]: value,
     }));
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegister = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError('');
-    if (formData.password.trim().length < 8){
+
+    if (formData.password.trim().length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres');
       setLoading(false);
       return;
     }
+
     try {
       console.log('=== INICIANDO REGISTRO ===');
       console.log('Datos del formulario:', formData);
-      
-      // 1. Registrar usuario en Supabase Auth
+
+      // === Paso 1: Registrar usuario en Supabase Auth ===
       console.log('Paso 1: Registrando usuario en Auth...');
       const { data: authData, error: authError } = await authService.signUp(
         formData.email,
@@ -78,16 +80,17 @@ const RegisterEstudiantes: React.FC = () => {
       if (authData.user) {
         console.log('Paso 2: Usuario creado, creando perfil...');
         console.log('User ID:', authData.user.id);
-        
-        // 2. Crear perfil de estudiante
-        const { data: estudianteData, error: estudianteError } = await estudianteService.create({
-          user_id: authData.user.id,
-          nombre: formData.nombre,
-          apellido: formData.apellido,
-          email: formData.email,
-          telefono: formData.telefono,
-          carrera: formData.carrera,
-        });
+
+        // === Paso 2: Crear perfil de estudiante ===
+        const { data: estudianteData, error: estudianteError } =
+          await estudianteService.create({
+            user_id: authData.user.id,
+            nombre: formData.nombre,
+            apellido: formData.apellido,
+            email: formData.email,
+            telefono: formData.telefono,
+            carrera: formData.carrera,
+          });
 
         console.log('Resultado Estudiante:', { estudianteData, estudianteError });
 
@@ -112,21 +115,20 @@ const RegisterEstudiantes: React.FC = () => {
   return (
     <Box
       sx={{
+        alignItems: 'center',
         backgroundColor: 'background.default',
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'center',
-        minHeight:'100vh'
-
+        minHeight: '100vh',
       }}
-
     >
-      <Container maxWidth="md"
-                  sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-  }}
+      <Container
+        maxWidth="md"
+        sx={{
+          alignItems: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+        }}
       >
         <Paper
           elevation={3}
@@ -152,8 +154,8 @@ const RegisterEstudiantes: React.FC = () => {
             </Alert>
           )}
 
-          <Box component="form"  onSubmit={handleRegister} noValidate>
-            <Grid container  spacing={2}>
+          <Box component="form" noValidate onSubmit={handleRegister}>
+            <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   name="nombre"
