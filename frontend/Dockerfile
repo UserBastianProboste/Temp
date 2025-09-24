@@ -10,9 +10,12 @@ WORKDIR /app
 ENV NODE_ENV=development
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN chmod +x docker-entrypoint.sh
+RUN sed -i 's/\r$//' docker-entrypoint.sh \
+  && chmod +x docker-entrypoint.sh \
+  && cp docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
+  && chmod +x /usr/local/bin/docker-entrypoint.sh
 EXPOSE 5173
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 
 FROM node:20-alpine AS build
