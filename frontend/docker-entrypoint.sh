@@ -3,6 +3,7 @@ set -e
 
 LOCKFILE="package-lock.json"
 HASH_FILE="node_modules/.package-lock.hash"
+
 REQUIRED_PATHS="node_modules/.bin/vite node_modules/@supabase/supabase-js node_modules/@mui/icons-material node_modules/@mui/material node_modules/@emotion/react node_modules/@emotion/styled"
 EXTRA_MODULES="@mui/material @emotion/react @emotion/styled @mui/icons-material"
 
