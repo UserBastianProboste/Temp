@@ -184,6 +184,10 @@ FROM practicas p
 LEFT JOIN estudiantes e ON p.estudiante_id = e.id
 LEFT JOIN empresas emp ON p.empresa_id = emp.id
 LEFT JOIN coordinadores c ON p.coordinador_id = c.id;
+
+-- 9. Por nombrar
+ALTER TABLE estudiantes DISABLE ROW LEVEL SECURITY;
+
 ```
 
 ## 🚀 Instalación y Uso

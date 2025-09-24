@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate,Link } from 'react-router-dom';
 import {
   Box,
@@ -12,7 +12,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Email, Lock } from '@mui/icons-material';
-import { authService } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,36 +21,26 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const { login, user, role, loading: authLoading } = useAuth();
+
+  useEffect(()=>{
+    if (!user) return;
+    if (role === 'coordinador') navigate('/dashboard-coordinador');
+    else if (role === 'estudiante') navigate('/dashboard-estudiante');
+    else navigate('/dashboard');
+  },[user,role,navigate]);
+
+    const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    try {
-      const { data, error } = await authService.signIn(email, password);
-      
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
-      if (data.user) {
-        const role = data.user.user_metadata?.role;
-        
-        if (role === 'coordinador') {
-          navigate('/dashboard-coordinador');
-        } else if (role === 'estudiante') {
-          navigate('/dashboard-estudiante');
-        } else {
-          navigate('/dashboard');
-        }
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el login';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
+    const { error } = await login(email, password);
+    if (error && error instanceof Error) {
+      setError(error.message);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -119,18 +109,11 @@ const Login: React.FC = () => {
 
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || authLoading}
               size="large"
               sx={{ mt: 3, py: 1.5 }}
             >
-              {loading ? (
-                <>
-                  <CircularProgress size={20} sx={{ mr: 1 }} />
-                  Iniciando sesión...
-                </>
-              ) : (
-                'Iniciar Sesión'
-              )}
+              {loading || authLoading ? (<><CircularProgress size={20} sx={{ mr: 1 }} />Iniciando sesión...</>) : ('Iniciar Sesión')}
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>

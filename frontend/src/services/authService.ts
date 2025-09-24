@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
-import type { User } from '@supabase/supabase-js'; // CAMBIAR ESTA LÍNEA
-import type { DatabaseUser } from '../types/database';
+
+
 
 export const authService = {
   // Registro
@@ -50,10 +50,20 @@ export const authService = {
     return {data,error}
   },
 
-  // Escuchar cambios de autenticación
-  onAuthStateChange(callback: (user: User | null) => void) { // CAMBIAR ESTA LÍNEA
-    return supabase.auth.onAuthStateChange((_event, session) => {
-      callback(session?.user || null); // CAMBIAR ESTA LÍNEA - quitar el cast
+  async isBlocked(email:string){
+    const {data,error} = await supabase.rpc('auth_is_blocked', {
+      p_email : email.toLowerCase()
     });
-  }
+    return { data,error};
+  },
+  async recordLoginAttempt(email:string , success:boolean){
+    const {data,error} = await supabase.rpc('auth_record_attempt', {
+      p_email : email.toLowerCase(),
+      p_success: success
+    });
+    return { data,error};
+  },
+
+  
+  
 };

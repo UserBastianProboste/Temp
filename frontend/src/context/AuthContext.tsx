@@ -1,6 +1,5 @@
 import {
   createContext,
-  useContext,
   useEffect,
   useState,
   type ReactNode
@@ -50,15 +49,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     setLoading(true);
+    try{
+    const pre = await authService.isBlocked(email);
+    if(pre.error){
+      setLoading(false);
+      return{error: pre.error}
+    }
+    const preData = pre.data as {blocked: boolean ; blocked_until: string | null} | null;
+    if (preData?.blocked){
+      setLoading(false);
+      const until = preData?.blocked_until
+        ? new Date(preData.blocked_until).toLocaleTimeString()
+        : 'unos minutos'
+      return {error : new Error(`Cuenta bloqueada. Intenta despues de ${until}`)}
+    }
     const { data, error } = await authService.signIn(email, password);
+
+    await authService.recordLoginAttempt(email,!error)
+
+
     if (!error && data.user) {
       setUser(data.user);
       setRole(data.user.user_metadata?.role ?? null);
     }
-    setLoading(false);
     return { error };
-  };
-
+  } catch(e) {
+    return {error: e as  unknown};
+    }finally{
+      setLoading(false)
+    }
+}
   const logout = async () => {
     setLoading(true);
     await authService.signOut();
