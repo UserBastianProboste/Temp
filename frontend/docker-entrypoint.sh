@@ -4,10 +4,12 @@ set -e
 LOCKFILE="package-lock.json"
 HASH_FILE="node_modules/.package-lock.hash"
 
+
 if [ ! -f "$LOCKFILE" ]; then
   echo "No se encontró $LOCKFILE; ejecutando npm install" >&2
   npm install
   mkdir -p node_modules
+
   if [ -f "$LOCKFILE" ]; then
     sha256sum "$LOCKFILE" | awk '{ print $1 }' > "$HASH_FILE"
   else
