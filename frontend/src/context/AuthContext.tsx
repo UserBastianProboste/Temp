@@ -15,7 +15,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<{ error: unknown }>;
   logout: () => Promise<void>;
 }
-
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
