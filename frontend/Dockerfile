@@ -19,7 +19,7 @@ ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 
 FROM node:20-alpine AS build
-WORKDIR /app
+WORKDIR /APP
 ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
 RUN npm ci
