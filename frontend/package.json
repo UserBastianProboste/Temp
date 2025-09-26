@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:cli": "node ./scripts/supabase-cli.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
