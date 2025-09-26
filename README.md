@@ -225,6 +225,17 @@ npm install
 npm run dev -- --host
 ```
 
+### CLI de depuración para Supabase
+
+Para registrar rápidamente empresas o coordinadores, o listar el contenido de las tablas principales, puedes utilizar el script interactivo incluido:
+
+```bash
+# Ejecutar el CLI desde la raíz del repositorio
+npm run db:cli --prefix frontend
+```
+
+El script intenta cargar automáticamente las variables de entorno desde `.env` (en la raíz) o `frontend/.env`. Asegúrate de definir al menos `SUPABASE_URL` y una clave con permisos de inserción, idealmente `SUPABASE_SERVICE_ROLE_KEY`. Si solo dispones de la clave pública (anon), las operaciones podrían fallar si tienes RLS activado.
+
 #### Build de producción con Docker
 
 Si quieres obtener una imagen lista para desplegar estáticamente puedes ejecutar:
