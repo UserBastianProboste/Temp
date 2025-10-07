@@ -144,11 +144,18 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               borderRadius: 1,
               mx: 1,
               mb: 0.5,
+              color: '#f3f3f3',
+              '& .MuiListItemIcon-root': {
+                color: '#d0d0d0'
+              },
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.08)'
+              },
               ...(active && {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                '&:hover': { bgcolor: 'primary.dark' },
-                '& .MuiListItemIcon-root': { color: 'primary.contrastText' }
+                bgcolor: theme.palette.primary.main,
+                color: theme.palette.primary.contrastText,
+                '&:hover': { bgcolor: theme.palette.primary.dark },
+                '& .MuiListItemIcon-root': { color: theme.palette.primary.contrastText }
               })
             }}
             onClick={() => {
@@ -171,7 +178,11 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
       <Button
         fullWidth
         variant="contained"
-        color="secondary"
+        sx={{
+          bgcolor: '#575756',
+          color: '#fff',
+          '&:hover': { bgcolor: '#4a4a49' }
+        }}
         startIcon={<HelpIcon />}
         component={RouterLink}
         to="/estudiante/preguntas-frecuentes"
@@ -200,22 +211,26 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               display: 'flex',
               flexDirection: 'column',
               borderRight: 'none',
-              boxShadow: 3
+              boxShadow: 3,
+              bgcolor: '#3f3f3e',
+              color: '#f3f3f3'
             }
           }}
         >
           <Toolbar sx={{ justifyContent: 'center', py: 3 }}>
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
                 BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
               </Typography>
-              <Typography variant="caption">Universidad Autónoma de Chile</Typography>
+              <Typography variant="caption" sx={{ color: '#d0d0d0' }}>
+                Universidad Autónoma de Chile
+              </Typography>
             </Box>
           </Toolbar>
-          <Divider />
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {renderMenuItems}
           <Box sx={{ flexGrow: 1 }} />
-          <Divider />
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {faqButton}
         </Drawer>
       ) : (
@@ -227,28 +242,42 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
           sx={{
             '& .MuiDrawer-paper': {
               width: 240,
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              bgcolor: '#3f3f3e',
+              color: '#f3f3f3'
             }
           }}
         >
           <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
                 BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
               </Typography>
-              <Typography variant="caption">Universidad Autónoma de Chile</Typography>
+              <Typography variant="caption" sx={{ color: '#d0d0d0' }}>
+                Universidad Autónoma de Chile
+              </Typography>
             </Box>
           </Toolbar>
-          <Divider />
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {renderMenuItems}
           <Box sx={{ flexGrow: 1 }} />
-          <Divider />
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {faqButton}
         </Drawer>
       )}
 
       <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <AppBar position="fixed" color="inherit" elevation={1} sx={{ zIndex: theme.zIndex.drawer + 1 }}>
+        <AppBar
+          position="fixed"
+          color="inherit"
+          elevation={1}
+          sx={{
+            zIndex: theme.zIndex.drawer + 1,
+            ml: isWide ? '260px' : 0,
+            width: isWide ? 'calc(100% - 260px)' : '100%',
+            bgcolor: '#ffffff'
+          }}
+        >
           <Toolbar>
             {!isWide && (
               <IconButton
