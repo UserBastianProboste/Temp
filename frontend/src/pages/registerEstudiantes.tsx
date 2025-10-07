@@ -94,6 +94,11 @@ const RegisterEstudiantes: React.FC = () => {
     [confirmPassword, email, emailPhase, password, verificationCode],
   );
 
+  const isStepThreeComplete = useMemo(
+    () => Boolean(carrera.trim() && sede.trim()),
+    [carrera, sede],
+  );
+
   useEffect(() => {
     if (!timerActive || emailPhase !== 'code') {
       return;
@@ -181,6 +186,9 @@ const RegisterEstudiantes: React.FC = () => {
       ...prev,
       verificationCode: '',
     }));
+    setTimeout(() => {
+      codeRefs.current[0]?.focus();
+    }, 0);
   };
 
   const handleUseDifferentEmail = () => {
@@ -231,17 +239,18 @@ const RegisterEstudiantes: React.FC = () => {
     });
   };
 
-  const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitRegistration = async () => {
     setError('');
-
-    if (activeStep < steps.length - 1) {
-      handleNext();
-      return;
-    }
 
     if (!isStepTwoComplete) {
       setError('Revisa los datos de contacto y tus credenciales antes de registrar.');
+      setActiveStep(1);
+      return;
+    }
+
+    if (!isStepThreeComplete) {
+      setError('Selecciona tu carrera y especifica la sede antes de finalizar el registro.');
+      setActiveStep(2);
       return;
     }
 
@@ -264,6 +273,8 @@ const RegisterEstudiantes: React.FC = () => {
       const email = formData.email.trim();
       const password = formData.password;
       const fullName = `${formData.nombre} ${formData.apellido}`.trim();
+      const selectedCarrera = formData.carrera.trim();
+      const selectedSede = formData.sede.trim();
       const options = {
         data: {
           full_name: fullName,
@@ -318,7 +329,8 @@ const RegisterEstudiantes: React.FC = () => {
           apellido: formData.apellido.trim(),
           email,
           telefono: formData.telefono.trim(),
-          carrera: formData.carrera || null,
+          carrera: selectedCarrera || null,
+          sede: selectedSede || null,
         });
 
         if (estudianteError) {
@@ -341,6 +353,17 @@ const RegisterEstudiantes: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (activeStep < steps.length - 1) {
+      handleNext();
+      return;
+    }
+
+    void submitRegistration();
   };
 
   return (
@@ -394,7 +417,7 @@ const RegisterEstudiantes: React.FC = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleRegister}>
+          <Box component="form" onSubmit={handleFormSubmit}>
             <Box
               key={activeStep}
               sx={{
@@ -406,80 +429,84 @@ const RegisterEstudiantes: React.FC = () => {
               }}
             >
               {activeStep === 0 && (
-                <Box sx={{ maxWidth: 560, mx: 'auto' }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        name="nombre"
-                        label="Nombre"
-                        value={formData.nombre}
-                        onChange={handleChange}
-                        fullWidth
-                        required
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Person color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
+                <Box
+                  sx={{
+                    width: '100%',
+                    maxWidth: { xs: '100%', md: 720 },
+                    mx: 'auto',
+                  }}
+                >
+                  <Grid container spacing={{ xs: 2, sm: 3 }} alignItems="stretch">
+                    <Grid item xs={12} md={6}>
+                      <Stack spacing={2} sx={{ height: '100%' }}>
+                        <TextField
+                          name="nombre"
+                          label="Nombre"
+                          value={formData.nombre}
+                          onChange={handleChange}
+                          fullWidth
+                          required
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Person color="action" />
+                              </InputAdornment>
+                            ),
+                          }}
+                        />
+                        <TextField
+                          name="rut"
+                          label="RUT"
+                          placeholder="12.345.678-9"
+                          value={formData.rut}
+                          onChange={handleChange}
+                          fullWidth
+                          required
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <AssignmentInd color="action" />
+                              </InputAdornment>
+                            ),
+                          }}
+                        />
+                      </Stack>
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        name="apellido"
-                        label="Apellido"
-                        value={formData.apellido}
-                        onChange={handleChange}
-                        fullWidth
-                        required
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Person color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        name="rut"
-                        label="RUT"
-                        placeholder="12.345.678-9"
-                        value={formData.rut}
-                        onChange={handleChange}
-                        fullWidth
-                        required
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <AssignmentInd color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        name="telefono"
-                        type="tel"
-                        label="Teléfono"
-                        placeholder="+56 9 1234 5678"
-                        value={formData.telefono}
-                        onChange={handleChange}
-                        fullWidth
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Phone color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
+                    <Grid item xs={12} md={6}>
+                      <Stack spacing={2} sx={{ height: '100%' }}>
+                        <TextField
+                          name="apellido"
+                          label="Apellido"
+                          value={formData.apellido}
+                          onChange={handleChange}
+                          fullWidth
+                          required
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Person color="action" />
+                              </InputAdornment>
+                            ),
+                          }}
+                        />
+                        <TextField
+                          name="telefono"
+                          type="tel"
+                          label="Teléfono"
+                          placeholder="+56 9 1234 5678"
+                          value={formData.telefono}
+                          onChange={handleChange}
+                          fullWidth
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Phone color="action" />
+                              </InputAdornment>
+                            ),
+                          }}
+                        />
+                      </Stack>
                     </Grid>
                   </Grid>
                 </Box>
@@ -541,11 +568,20 @@ const RegisterEstudiantes: React.FC = () => {
                       )}
                       {emailPhase === 'code' && (
                         <Typography
-                          variant="subtitle2"
+                          variant="caption"
                           color={timerExpired ? 'error.main' : 'text.secondary'}
-                          sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}
+                          sx={{
+                            fontVariantNumeric: 'tabular-nums',
+                            fontWeight: 600,
+                            letterSpacing: 1,
+                          }}
                         >
                           {formattedTimer}
+                        </Typography>
+                      )}
+                      {timerExpired && (
+                        <Typography variant="caption" color="error" sx={{ fontWeight: 600 }}>
+                          El código expiró. Puedes solicitar uno nuevo.
                         </Typography>
                       )}
                       <Button
@@ -646,23 +682,25 @@ const RegisterEstudiantes: React.FC = () => {
                           />
                         ))}
                       </Box>
-                      <Button
-                        variant={timerExpired ? 'contained' : 'outlined'}
-                        color={timerExpired ? 'secondary' : 'inherit'}
-                        onClick={handleResendCode}
-                        type="button"
-                        sx={{
-                          minWidth: 200,
-                          '@keyframes pulseAccent': {
-                            '0%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0.4)' },
-                            '70%': { boxShadow: '0 0 0 12px rgba(156, 39, 176, 0)' },
-                            '100%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0)' },
-                          },
-                          animation: timerExpired ? 'pulseAccent 1.6s ease-in-out infinite' : 'none',
-                        }}
-                      >
-                        Reenviar código
-                      </Button>
+                      {timerExpired && (
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={handleResendCode}
+                          type="button"
+                          sx={{
+                            minWidth: 200,
+                            '@keyframes pulseAccent': {
+                              '0%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0.4)' },
+                              '70%': { boxShadow: '0 0 0 12px rgba(156, 39, 176, 0)' },
+                              '100%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0)' },
+                            },
+                            animation: 'pulseAccent 1.6s ease-in-out infinite',
+                          }}
+                        >
+                          Reenviar código
+                        </Button>
+                      )}
                     </Stack>
                   )}
 
@@ -746,6 +784,7 @@ const RegisterEstudiantes: React.FC = () => {
                       onChange={handleChange}
                       select
                       fullWidth
+                      required
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -753,7 +792,11 @@ const RegisterEstudiantes: React.FC = () => {
                           </InputAdornment>
                         ),
                       }}
+                      helperText={!formData.carrera ? 'Selecciona la carrera que estás cursando' : ' '}
                     >
+                      <MenuItem value="" disabled>
+                        Selecciona una carrera
+                      </MenuItem>
                       {carreras.map(carrera => (
                         <MenuItem key={carrera} value={carrera}>
                           {carrera}
@@ -770,6 +813,7 @@ const RegisterEstudiantes: React.FC = () => {
                       value={formData.sede}
                       onChange={handleChange}
                       fullWidth
+                      required
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -777,6 +821,7 @@ const RegisterEstudiantes: React.FC = () => {
                           </InputAdornment>
                         ),
                       }}
+                      helperText={!formData.sede ? 'Indica la sede o campus donde estudias' : ' '}
                     />
                   </Grid>
                 </Grid>
@@ -818,7 +863,7 @@ const RegisterEstudiantes: React.FC = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={loading || !isStepTwoComplete}
+                  disabled={loading || !isStepTwoComplete || !isStepThreeComplete}
                   sx={{ minWidth: 180 }}
                 >
                   {loading ? (
