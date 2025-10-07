@@ -43,6 +43,7 @@ import {
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '@mui/material/styles';
+import LoadingScreen from './LoadingScreen';
 
 interface DashboardTemplateProps {
   title?: string;
@@ -103,11 +104,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
   const items = resolvedRole === 'coordinador' ? menuCoordinador : menuEstudiante;
 
   if (loading || roleLoading) {
-    return (
-      <Box display="flex" alignItems="center" justifyContent="center" minHeight="100vh">
-        <Typography>Cargando...</Typography>
-      </Box>
-    );
+    return <LoadingScreen />;
   }
 
   if (!currentUser) {
