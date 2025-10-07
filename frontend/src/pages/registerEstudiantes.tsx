@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -9,6 +9,7 @@ import Grid from '@mui/material/Grid';
 import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
@@ -64,6 +65,12 @@ const RegisterEstudiantes: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeStep, setActiveStep] = useState(0);
+  const [emailPhase, setEmailPhase] = useState<'input' | 'code' | 'credentials'>('input');
+  const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(''));
+  const [timer, setTimer] = useState(30);
+  const [timerActive, setTimerActive] = useState(false);
+  const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
@@ -72,13 +79,52 @@ const RegisterEstudiantes: React.FC = () => {
   const isStepOneComplete =
     Boolean(formData.nombre.trim() && formData.apellido.trim() && formData.rut.trim());
 
-  const isStepTwoComplete =
-    Boolean(
-      formData.email.trim() &&
-        formData.password.length >= 8 &&
-        formData.confirmPassword &&
-        formData.password === formData.confirmPassword,
-    );
+  const { email, verificationCode, password, confirmPassword } = formData;
+
+  const isStepTwoComplete = useMemo(
+    () =>
+      Boolean(
+        emailPhase === 'credentials' &&
+          email.trim() &&
+          verificationCode.length === 6 &&
+          password.length >= 8 &&
+          confirmPassword &&
+          password === confirmPassword,
+      ),
+    [confirmPassword, email, emailPhase, password, verificationCode],
+  );
+
+  useEffect(() => {
+    if (!timerActive || emailPhase !== 'code') {
+      return;
+    }
+
+    if (timer === 0) {
+      setTimerActive(false);
+      return;
+    }
+
+    const tick = window.setTimeout(() => {
+      setTimer(prev => Math.max(prev - 1, 0));
+    }, 1000);
+
+    return () => window.clearTimeout(tick);
+  }, [timerActive, timer, emailPhase]);
+
+  const timerExpired = timer === 0 && emailPhase === 'code';
+  const formattedTimer = `00:${String(timer).padStart(2, '0')}`;
+
+  useEffect(() => {
+    if (emailPhase === 'code') {
+      codeRefs.current[0]?.focus();
+    }
+  }, [emailPhase]);
+
+  useEffect(() => {
+    if (emailPhase === 'credentials') {
+      passwordRef.current?.focus();
+    }
+  }, [emailPhase]);
 
   const handleNext = () => {
     if (activeStep === 0 && !isStepOneComplete) {
@@ -87,7 +133,7 @@ const RegisterEstudiantes: React.FC = () => {
     }
 
     if (activeStep === 1 && !isStepTwoComplete) {
-      setError('Ingresa un correo válido y confirma tu contraseña.');
+      setError('Completa la verificación de correo y configura tu contraseña antes de continuar.');
       return;
     }
 
@@ -106,6 +152,83 @@ const RegisterEstudiantes: React.FC = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleSendCode = () => {
+    if (!formData.email.trim()) {
+      setError('Ingresa un correo electrónico válido antes de enviar el código.');
+      return;
+    }
+
+    setError('');
+    setEmailPhase('code');
+    setTimer(30);
+    setTimerActive(true);
+    setCodeDigits(Array(6).fill(''));
+    setFormData(prev => ({
+      ...prev,
+      verificationCode: '',
+    }));
+  };
+
+  const handleResendCode = () => {
+    setError('');
+    setEmailPhase('code');
+    setTimer(30);
+    setTimerActive(true);
+    setCodeDigits(Array(6).fill(''));
+    setFormData(prev => ({
+      ...prev,
+      verificationCode: '',
+    }));
+  };
+
+  const handleUseDifferentEmail = () => {
+    setError('');
+    setEmailPhase('input');
+    setTimerActive(false);
+    setTimer(30);
+    setCodeDigits(Array(6).fill(''));
+    setFormData(prev => ({
+      ...prev,
+      verificationCode: '',
+      password: '',
+      confirmPassword: '',
+    }));
+  };
+
+  const commitCodeDigits = (nextDigits: string[]) => {
+    const joined = nextDigits.join('');
+    setFormData(formPrev => ({
+      ...formPrev,
+      verificationCode: joined,
+    }));
+
+    if (joined.length === nextDigits.length && !nextDigits.includes('')) {
+      setEmailPhase('credentials');
+      setTimerActive(false);
+    }
+
+    return nextDigits;
+  };
+
+  const handleCodeDigitChange = (index: number, value: string) => {
+    if (!/^[0-9]?$/u.test(value)) {
+      return;
+    }
+
+    const digit = value.replace(/\D/u, '').slice(-1);
+
+    setCodeDigits(prev => {
+      const next = [...prev];
+      next[index] = digit;
+
+      if (digit && index < codeRefs.current.length - 1) {
+        codeRefs.current[index + 1]?.focus();
+      }
+
+      return commitCodeDigits(next);
+    });
   };
 
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -279,7 +402,7 @@ const RegisterEstudiantes: React.FC = () => {
             >
               {activeStep === 0 && (
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       name="nombre"
                       label="Nombre"
@@ -297,7 +420,7 @@ const RegisterEstudiantes: React.FC = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       name="apellido"
                       label="Apellido"
@@ -315,7 +438,7 @@ const RegisterEstudiantes: React.FC = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       name="rut"
                       label="RUT"
@@ -334,7 +457,7 @@ const RegisterEstudiantes: React.FC = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12}>
                     <TextField
                       name="telefono"
                       type="tel"
@@ -356,103 +479,250 @@ const RegisterEstudiantes: React.FC = () => {
               )}
 
               {activeStep === 1 && (
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="email"
-                      type="email"
-                      label="Correo Electrónico"
-                      value={formData.email}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Email color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
+                <Stack spacing={3}>
+                  {emailPhase === 'input' && (
+                    <Stack spacing={2}>
+                      <TextField
+                        name="email"
+                        type="email"
+                        label="Correo Electrónico"
+                        value={formData.email}
+                        onChange={handleChange}
+                        fullWidth
+                        required
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Email color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        helperText="Usaremos este correo para enviarte un código de verificación."
+                      />
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={handleSendCode}
+                          sx={{ minWidth: 180 }}
+                        >
+                          Enviar código
+                        </Button>
+                      </Box>
+                    </Stack>
+                  )}
 
-                  <Grid item xs={12}>
-                    <TextField
-                      name="verificationCode"
-                      label="Código de verificación"
-                      value={formData.verificationCode}
-                      onChange={handleChange}
-                      placeholder="Ingresa el código enviado a tu correo"
-                      fullWidth
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Verified color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                      helperText="Este paso es una simulación, puedes continuar sin completar el código."
-                    />
-                  </Grid>
+                  {emailPhase !== 'input' && (
+                    <Stack spacing={1} alignItems="center" textAlign="center">
+                      <Verified color={emailPhase === 'credentials' ? 'success' : 'primary'} sx={{ fontSize: 40 }} />
+                      <Typography variant="h6">
+                        {emailPhase === 'credentials' ? 'Código verificado' : 'Código enviado'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {emailPhase === 'credentials'
+                          ? 'Ya validamos tu correo. Ahora crea una contraseña segura.'
+                          : 'Revisa tu bandeja de entrada. Ingresa el código de 6 dígitos para continuar con la configuración de tu contraseña.'}
+                      </Typography>
+                      {formData.email && (
+                        <Typography variant="body2" color="text.secondary">
+                          Enviado a{' '}
+                          <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>
+                            {formData.email}
+                          </Box>
+                        </Typography>
+                      )}
+                      {emailPhase === 'code' && (
+                        <Typography
+                          variant="subtitle2"
+                          color={timerExpired ? 'error.main' : 'text.secondary'}
+                          sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}
+                        >
+                          {formattedTimer}
+                        </Typography>
+                      )}
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={handleUseDifferentEmail}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        Usar otro correo
+                      </Button>
+                    </Stack>
+                  )}
 
-                  <Grid item xs={12}>
-                    <TextField
-                      name="password"
-                      type="password"
-                      label="Contraseña"
-                      value={formData.password}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      inputProps={{ minLength: 8 }}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Lock color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                      error={Boolean(formData.password && formData.password.length < 8)}
-                      helperText={
-                        formData.password && formData.password.length < 8
-                          ? 'Debe tener al menos 8 caracteres'
-                          : 'Mínimo 8 caracteres'
-                      }
-                    />
-                  </Grid>
+                  {emailPhase === 'code' && (
+                    <Stack spacing={2} alignItems="center">
+                      <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
+                        {codeDigits.map((digit, index) => (
+                          <Box
+                            key={index}
+                            component="input"
+                            value={digit}
+                            onChange={event => handleCodeDigitChange(index, event.target.value)}
+                            onKeyDown={event => {
+                              if (event.key === 'Backspace') {
+                                event.preventDefault();
+                                if (codeDigits[index]) {
+                                  handleCodeDigitChange(index, '');
+                                } else {
+                                  const previousIndex = Math.max(index - 1, 0);
+                                  handleCodeDigitChange(previousIndex, '');
+                                  setTimeout(() => codeRefs.current[previousIndex]?.focus(), 0);
+                                }
+                              }
+                              if (event.key === 'ArrowLeft') {
+                                event.preventDefault();
+                                const previousIndex = Math.max(index - 1, 0);
+                                codeRefs.current[previousIndex]?.focus();
+                              }
+                              if (event.key === 'ArrowRight') {
+                                event.preventDefault();
+                                const nextIndex = Math.min(index + 1, codeRefs.current.length - 1);
+                                codeRefs.current[nextIndex]?.focus();
+                              }
+                            }}
+                            onPaste={event => {
+                              event.preventDefault();
+                              const pasted = event.clipboardData
+                                .getData('text')
+                                .replace(/\D/g, '')
+                                .slice(0, codeDigits.length - index);
 
-                  <Grid item xs={12}>
-                    <TextField
-                      name="confirmPassword"
-                      type="password"
-                      label="Confirmar Contraseña"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      inputProps={{ minLength: 8 }}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Lock color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                      error={
-                        Boolean(
-                          formData.confirmPassword &&
-                            formData.confirmPassword !== formData.password,
-                        )
-                      }
-                      helperText={
-                        formData.confirmPassword &&
-                        formData.confirmPassword !== formData.password
-                          ? 'Las contraseñas deben coincidir'
-                          : 'Repite la contraseña para confirmarla'
-                      }
-                    />
-                  </Grid>
-                </Grid>
+                              if (!pasted) {
+                                return;
+                              }
+
+                              setCodeDigits(prev => {
+                                const next = [...prev];
+                                for (let i = 0; i < pasted.length; i += 1) {
+                                  next[index + i] = pasted[i];
+                                }
+                                return commitCodeDigits(next);
+                              });
+
+                              const nextFocusIndex = Math.min(
+                                index + pasted.length,
+                                codeRefs.current.length - 1,
+                              );
+                              setTimeout(() => codeRefs.current[nextFocusIndex]?.focus(), 0);
+                            }}
+                            ref={element => {
+                              codeRefs.current[index] = element;
+                            }}
+                            maxLength={1}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            disabled={timerExpired}
+                            sx={{
+                              width: { xs: 48, sm: 56 },
+                              height: { xs: 56, sm: 64 },
+                              borderRadius: 2,
+                              border: theme => `1px solid ${theme.palette.divider}`,
+                              textAlign: 'center',
+                              fontSize: '1.5rem',
+                              fontWeight: 600,
+                              outline: 'none',
+                              transition: 'border-color 200ms ease, transform 200ms ease',
+                              backgroundColor: timerExpired ? 'action.disabledBackground' : 'white',
+                              '&:focus': {
+                                borderColor: 'primary.main',
+                                transform: 'translateY(-2px)',
+                              },
+                              '&:disabled': {
+                                cursor: 'not-allowed',
+                              },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                      <Button
+                        variant={timerExpired ? 'contained' : 'outlined'}
+                        color={timerExpired ? 'secondary' : 'inherit'}
+                        onClick={handleResendCode}
+                        sx={{
+                          minWidth: 200,
+                          '@keyframes pulseAccent': {
+                            '0%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0.4)' },
+                            '70%': { boxShadow: '0 0 0 12px rgba(156, 39, 176, 0)' },
+                            '100%': { boxShadow: '0 0 0 0 rgba(156, 39, 176, 0)' },
+                          },
+                          animation: timerExpired ? 'pulseAccent 1.6s ease-in-out infinite' : 'none',
+                        }}
+                      >
+                        Reenviar código
+                      </Button>
+                    </Stack>
+                  )}
+
+                  {emailPhase === 'credentials' && (
+                    <Stack spacing={2}>
+                      <Typography variant="subtitle1" color="text.secondary">
+                        ¡Listo! Ahora crea una contraseña segura.
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                          <TextField
+                            name="password"
+                            type="password"
+                            label="Contraseña"
+                            value={formData.password}
+                            onChange={handleChange}
+                            fullWidth
+                            required
+                            inputProps={{ minLength: 8 }}
+                            inputRef={passwordRef}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <Lock color="action" />
+                                </InputAdornment>
+                              ),
+                            }}
+                            error={Boolean(formData.password && formData.password.length < 8)}
+                            helperText={
+                              formData.password && formData.password.length < 8
+                                ? 'Debe tener al menos 8 caracteres'
+                                : 'Mínimo 8 caracteres'
+                            }
+                          />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                          <TextField
+                            name="confirmPassword"
+                            type="password"
+                            label="Confirmar Contraseña"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            fullWidth
+                            required
+                            inputProps={{ minLength: 8 }}
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <Lock color="action" />
+                                </InputAdornment>
+                              ),
+                            }}
+                            error={
+                              Boolean(
+                                formData.confirmPassword &&
+                                  formData.confirmPassword !== formData.password,
+                              )
+                            }
+                            helperText={
+                              formData.confirmPassword &&
+                              formData.confirmPassword !== formData.password
+                                ? 'Las contraseñas deben coincidir'
+                                : 'Repite la contraseña para confirmarla'
+                            }
+                          />
+                        </Grid>
+                      </Grid>
+                    </Stack>
+                  )}
+                </Stack>
               )}
 
               {activeStep === 2 && (
