@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
   AppBar,
@@ -23,7 +23,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  useMediaQuery
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -36,23 +37,31 @@ import {
   Settings as SettingsIcon,
   Person as PersonIcon,
   FeedbackSharp as FeedbackIcon,
-  DriveFolderUploadRounded as UploadIcon
+  DriveFolderUploadRounded as UploadIcon,
+  HelpOutline as HelpIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '@mui/material/styles';
 
 interface DashboardTemplateProps {
-  title: string;
+  title?: string;
   children: React.ReactNode;
 }
 
 export default function DashboardTemplate({ title, children }: DashboardTemplateProps) {
   const { currentUser, signOut, loading, role, roleLoading } = useAuth();
+  const theme = useTheme();
+  const isWide = useMediaQuery('(min-aspect-ratio: 4/3)');
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    setDrawerOpen(isWide);
+  }, [isWide]);
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorElUser(event.currentTarget);
   const handleCloseUserMenu = () => setAnchorElUser(null);
@@ -69,22 +78,22 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     navigate('/login', { replace: true });
   };
 
-  const menuEstudiante = [
+  const menuEstudiante = useMemo(() => ([
     { label: 'Inicio', icon: <DashboardIcon />, to: '/estudiante/dashboard' },
     { label: 'Autoevaluación', icon: <AssignmentIcon />, to: '/estudiante/autoevaluacion' },
     { label: 'Ficha de práctica', icon: <DescriptionIcon />, to: '/estudiante/fichapractica' },
     { label: 'Adjuntar informes', icon: <UploadIcon />, to: '/estudiante/adjuntar_informes' },
-    { label: 'Retroalimentacion', icon: <FeedbackIcon />, to: '/estudiante/retroalimentacion' },
+    { label: 'Retroalimentación', icon: <FeedbackIcon />, to: '/estudiante/retroalimentacion' },
     { label: 'Historial de solicitudes', icon: <DescriptionIcon />, to: '/historial_solicitudes' }
-  ];
+  ]), []);
 
-  const menuCoordinador = [
+  const menuCoordinador = useMemo(() => ([
     { label: 'Panel', icon: <DashboardIcon />, to: '/coordinador/dashboard' },
     { label: 'Prácticas', icon: <AssignmentIcon />, to: '/coordinador/practicas' },
     { label: 'Estudiantes', icon: <GroupIcon />, to: '/coordinador/estudiantes' },
     { label: 'Empresas', icon: <BusinessIcon />, to: '/coordinador/empresas' },
     { label: 'Historial de solicitudes', icon: <DescriptionIcon />, to: '/historial_solicitudes' }
-  ];
+  ]), []);
 
   const claimedRole = currentUser && 'role' in currentUser
     ? (currentUser as User & { role?: string | null }).role ?? null
@@ -112,72 +121,169 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     .map(part => part[0]?.toUpperCase())
     .join('') || 'U';
   const roleLabel = resolvedRole ?? 'usuario';
+  const defaultTitle = resolvedRole === 'coordinador' ? 'Panel de coordinación' : 'Panel de estudiante';
+  const headerTitle = title && title.trim().length > 0 ? title : defaultTitle;
+  const showSubtitle = headerTitle.trim().toLowerCase() !== defaultTitle.toLowerCase();
 
-  return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <Drawer
-        variant="permanent"
-        open={drawerOpen}
-        sx={{
-          width: drawerOpen ? 240 : 72,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerOpen ? 240 : 72,
-            transition: 'width 0.25s',
-            overflowX: 'hidden'
+  const isActivePath = (path: string) => {
+    if (location.pathname === path) return true;
+    return location.pathname.startsWith(path) && path !== '/';
+  };
+
+  const renderMenuItems = (
+    <List sx={{ mt: 1 }}>
+      {items.map(item => {
+        const active = isActivePath(item.to);
+        return (
+          <ListItemButton
+            key={item.to}
+            component={RouterLink}
+            to={item.to}
+            selected={active}
+            sx={{
+              borderRadius: 1,
+              mx: 1,
+              mb: 0.5,
+              ...(active && {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                '&:hover': { bgcolor: 'primary.dark' },
+                '& .MuiListItemIcon-root': { color: 'primary.contrastText' }
+              })
+            }}
+            onClick={() => {
+              if (!isWide) {
+                setDrawerOpen(false);
+              }
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+            {drawerOpen && isWide && <ListItemText primary={item.label} />}
+            {!isWide && <ListItemText primary={item.label} />}
+          </ListItemButton>
+        );
+      })}
+    </List>
+  );
+
+  const faqButton = (
+    <Box sx={{ p: 2 }}>
+      <Button
+        fullWidth
+        variant="contained"
+        color="secondary"
+        startIcon={<HelpIcon />}
+        component={RouterLink}
+        to="/estudiante/preguntas-frecuentes"
+        onClick={() => {
+          if (!isWide) {
+            setDrawerOpen(false);
           }
         }}
       >
-        <Toolbar />
-        <Divider />
-        <List sx={{ mt: 1 }}>
-          {items.map(item => {
-            const active = location.pathname === item.to;
-            return (
-              <ListItemButton
-                key={item.to}
-                component={RouterLink}
-                to={item.to}
-                selected={active}
-                sx={{
-                  borderRadius: 1,
-                  mx: 1,
-                  mb: 0.5,
-                  ...(active && {
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                    '&:hover': { bgcolor: 'primary.dark' },
-                    '& .MuiListItemIcon-root': { color: 'primary.contrastText' }
-                  })
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-                {drawerOpen && <ListItemText primary={item.label} />}
-              </ListItemButton>
-            );
-          })}
-        </List>
-      </Drawer>
+        Preguntas frecuentes
+      </Button>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {isWide ? (
+        <Drawer
+          variant="permanent"
+          open
+          sx={{
+            width: 260,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: 260,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRight: 'none',
+              boxShadow: 3
+            }
+          }}
+        >
+          <Toolbar sx={{ justifyContent: 'center', py: 3 }}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
+              </Typography>
+              <Typography variant="caption">Universidad Autónoma de Chile</Typography>
+            </Box>
+          </Toolbar>
+          <Divider />
+          {renderMenuItems}
+          <Box sx={{ flexGrow: 1 }} />
+          <Divider />
+          {faqButton}
+        </Drawer>
+      ) : (
+        <Drawer
+          variant="temporary"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: 240,
+              boxSizing: 'border-box'
+            }
+          }}
+        >
+          <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
+              </Typography>
+              <Typography variant="caption">Universidad Autónoma de Chile</Typography>
+            </Box>
+          </Toolbar>
+          <Divider />
+          {renderMenuItems}
+          <Box sx={{ flexGrow: 1 }} />
+          <Divider />
+          {faqButton}
+        </Drawer>
+      )}
 
       <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <AppBar position="fixed" sx={{ zIndex: theme => theme.zIndex.drawer + 1 }}>
+        <AppBar position="fixed" color="inherit" elevation={1} sx={{ zIndex: theme.zIndex.drawer + 1 }}>
           <Toolbar>
-            <IconButton
-              color="inherit"
-              aria-label="toggle drawer"
-              onClick={() => setDrawerOpen(o => !o)}
-              edge="start"
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="h6" lineHeight={1.15}>
-                {title}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                Panel de {roleLabel}
-              </Typography>
+            {!isWide && (
+              <IconButton
+                color="inherit"
+                aria-label="toggle drawer"
+                onClick={() => setDrawerOpen(o => !o)}
+                edge="start"
+                sx={{ mr: 2 }}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Avatar
+                variant="rounded"
+                sx={{
+                  bgcolor: theme.palette.primary.main,
+                  width: 44,
+                  height: 44,
+                  mr: 2,
+                  fontWeight: 700
+                }}
+              >
+                UA
+              </Avatar>
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="h6" lineHeight={1.15} fontWeight={600}>
+                  {headerTitle}
+                </Typography>
+                {showSubtitle && (
+                  <Typography variant="caption" sx={{ opacity: 0.85 }}>
+                    Panel de {roleLabel}
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
             <Box sx={{ flexGrow: 1 }} />

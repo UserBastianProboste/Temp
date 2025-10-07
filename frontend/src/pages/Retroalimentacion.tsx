@@ -254,7 +254,7 @@ export default function Retroalimentacion(): React.ReactElement {
   }
 
   return (
-    <DashboardTemplate title="Panel de estudiante">
+    <DashboardTemplate title="Retroalimentación">
       <Box
         sx={{ display: "flex", justifyContent: "center", p: { xs: 2, md: 4 } }}
       >

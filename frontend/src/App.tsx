@@ -19,6 +19,7 @@ import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
 import CoordinadorPracticas from './pages/coordinadorPracticas';
 import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
 import CoordinadorEmpresas from './pages/coordinadorEmpresas';
+import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 
 function App() {
   return (
@@ -50,9 +51,9 @@ function App() {
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
+                <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
               </Route>
             
-              // Rutas para el rol de coordinador
               {/* Rutas para el rol de coordinador */}
               <Route path='/coordinador' element={<RouteGuard roleAllowed='coordinador' />}>
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
