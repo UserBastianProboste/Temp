@@ -235,6 +235,11 @@ const RegisterEstudiantes: React.FC = () => {
     event.preventDefault();
     setError('');
 
+    if (activeStep < steps.length - 1) {
+      handleNext();
+      return;
+    }
+
     if (!isStepTwoComplete) {
       setError('Revisa los datos de contacto y tus credenciales antes de registrar.');
       return;
@@ -401,81 +406,83 @@ const RegisterEstudiantes: React.FC = () => {
               }}
             >
               {activeStep === 0 && (
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      name="nombre"
-                      label="Nombre"
-                      value={formData.nombre}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Person color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
+                <Box sx={{ maxWidth: 560, mx: 'auto' }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        name="nombre"
+                        label="Nombre"
+                        value={formData.nombre}
+                        onChange={handleChange}
+                        fullWidth
+                        required
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Person color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
 
-                  <Grid item xs={12}>
-                    <TextField
-                      name="apellido"
-                      label="Apellido"
-                      value={formData.apellido}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Person color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        name="apellido"
+                        label="Apellido"
+                        value={formData.apellido}
+                        onChange={handleChange}
+                        fullWidth
+                        required
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Person color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
 
-                  <Grid item xs={12}>
-                    <TextField
-                      name="rut"
-                      label="RUT"
-                      placeholder="12.345.678-9"
-                      value={formData.rut}
-                      onChange={handleChange}
-                      fullWidth
-                      required
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <AssignmentInd color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        name="rut"
+                        label="RUT"
+                        placeholder="12.345.678-9"
+                        value={formData.rut}
+                        onChange={handleChange}
+                        fullWidth
+                        required
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <AssignmentInd color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
 
-                  <Grid item xs={12}>
-                    <TextField
-                      name="telefono"
-                      type="tel"
-                      label="Teléfono"
-                      placeholder="+56 9 1234 5678"
-                      value={formData.telefono}
-                      onChange={handleChange}
-                      fullWidth
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Phone color="action" />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        name="telefono"
+                        type="tel"
+                        label="Teléfono"
+                        placeholder="+56 9 1234 5678"
+                        value={formData.telefono}
+                        onChange={handleChange}
+                        fullWidth
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Phone color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
                   </Grid>
-                </Grid>
+                </Box>
               )}
 
               {activeStep === 1 && (
@@ -504,6 +511,7 @@ const RegisterEstudiantes: React.FC = () => {
                           variant="contained"
                           color="primary"
                           onClick={handleSendCode}
+                          type="button"
                           sx={{ minWidth: 180 }}
                         >
                           Enviar código
@@ -544,6 +552,7 @@ const RegisterEstudiantes: React.FC = () => {
                         variant="text"
                         size="small"
                         onClick={handleUseDifferentEmail}
+                        type="button"
                         sx={{ textTransform: 'none' }}
                       >
                         Usar otro correo
@@ -622,6 +631,7 @@ const RegisterEstudiantes: React.FC = () => {
                               textAlign: 'center',
                               fontSize: '1.5rem',
                               fontWeight: 600,
+                              color: theme => theme.palette.common.black,
                               outline: 'none',
                               transition: 'border-color 200ms ease, transform 200ms ease',
                               backgroundColor: timerExpired ? 'action.disabledBackground' : 'white',
@@ -640,6 +650,7 @@ const RegisterEstudiantes: React.FC = () => {
                         variant={timerExpired ? 'contained' : 'outlined'}
                         color={timerExpired ? 'secondary' : 'inherit'}
                         onClick={handleResendCode}
+                        type="button"
                         sx={{
                           minWidth: 200,
                           '@keyframes pulseAccent': {
@@ -787,6 +798,7 @@ const RegisterEstudiantes: React.FC = () => {
                 color="inherit"
                 disabled={activeStep === 0 || loading}
                 onClick={handleBack}
+                type="button"
               >
                 Paso anterior
               </Button>
@@ -796,6 +808,7 @@ const RegisterEstudiantes: React.FC = () => {
                   variant="contained"
                   color="primary"
                   onClick={handleNext}
+                  type="button"
                   disabled={(activeStep === 0 && !isStepOneComplete) || (activeStep === 1 && !isStepTwoComplete) || loading}
                 >
                   Siguiente paso
