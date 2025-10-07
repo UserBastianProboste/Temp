@@ -1,26 +1,24 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
-import { theme } from './theme/theme';
-
-import { AuthProvider } from './context/AuthContext';
-import { useAuth } from './hooks/useAuth';
-
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { theme } from './theme/theme'; // Import nombrado, no default
 import Login from './pages/login';
 import RegisterEstudiantes from './pages/registerEstudiantes';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
 import DashboardEstudiante from './pages/dashboardEstudiante';
 import DashboardCoordinador from './pages/dashboardCoordinador';
-
-const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRole?: 'estudiante' | 'coordinador' }> =
-  ({ children, allowedRole }) => {
-    const { user, role, loading } = useAuth();
-    if (loading) return <div style={{ padding: 40 }}>Cargando...</div>;
-    if (!user) return <Navigate to="/login" replace />;
-    if (allowedRole && role !== allowedRole) return <Navigate to="/login" replace />;
-    return <>{children}</>;
-  };
+import { AuthProvider } from "./providers/AuthProvider";
+import { RouteGuard } from './components/RouteGuard';
+import SeleccionPractica from "./pages/SeleccionPractica";
+import Autoevaluacion from './pages/autoevaluacion';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Retroalimentacion from './pages/Retroalimentacion';
+import AdjuntarInformes from "./pages/adjuntarInformesEstudiantes";
+import HistorialSolicitudes from "./pages/historialSolicitudes";
+import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
+import CoordinadorPracticas from './pages/coordinadorPracticas';
+import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
+import CoordinadorEmpresas from './pages/coordinadorEmpresas';
 
 function App() {
   return (
@@ -31,29 +29,38 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<RegisterEstudiantes />} />
-            <Route path="/register-estudiantes" element={<RegisterEstudiantes />} />
+            <Route
+              path="/register-estudiantes"
+              element={<RegisterEstudiantes />}
+            />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/autoevaluacion" element={<Autoevaluacion />} />
+            <Route path="/historial_solicitudes" element={<HistorialSolicitudes />} />
+            
+            {/* Rutas protegidas por autenticación */}
+            <Route path='/' element={<RouteGuard />}>
 
-            <Route
-              path="/dashboard-estudiante"
-              element={
-                <ProtectedRoute allowedRole="estudiante">
-                  <DashboardEstudiante />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard-coordinador"
-              element={
-                <ProtectedRoute allowedRole="coordinador">
-                  <DashboardCoordinador />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
+              {/* Rutas para el rol de estudiante */}
+              <Route path='/estudiante' element={<RouteGuard roleAllowed='estudiante' />}>
+                <Route path="/estudiante/dashboard" element={<DashboardEstudiante />} />
+                <Route path='/estudiante/autoevaluacion' element={<SeleccionPractica />} />
+                <Route path='/estudiante/seleccion-practica' element={<SeleccionPractica />} />
+                <Route path='/estudiante/autoevaluacion/:practicaId' element={<Autoevaluacion />} />
+                <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
+                <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
+                <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
+              </Route>
+            
+              // Rutas para el rol de coordinador
+              {/* Rutas para el rol de coordinador */}
+              <Route path='/coordinador' element={<RouteGuard roleAllowed='coordinador' />}>
+                <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
+                <Route path='/coordinador/practicas' element={<CoordinadorPracticas />} />
+                <Route path='/coordinador/estudiantes' element={<CoordinadorEstudiantes />} />
+                <Route path='/coordinador/empresas' element={<CoordinadorEmpresas />} />
+              </Route>
+            </Route>
           </Routes>
         </Router>
       </AuthProvider>

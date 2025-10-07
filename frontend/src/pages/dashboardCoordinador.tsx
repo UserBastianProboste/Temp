@@ -1,8 +1,10 @@
-export default function DashboardProfesor() {
+import DashboardTemplate from "../components/DashboardTemplate";
+import CoordinatorDashboard from "../components/CoordinatorDashboard";
+
+export default function DashboardCoordinador() {
   return (
-    <div>
-      <h2>Dashboard Profesor</h2>
-      <p>hola</p>
-    </div>
+    <DashboardTemplate title="Prácticas – Coordinación">
+      <CoordinatorDashboard />
+    </DashboardTemplate>
   );
 }

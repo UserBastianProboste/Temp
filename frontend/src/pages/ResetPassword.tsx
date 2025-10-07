@@ -11,7 +11,6 @@ import {
 } from '@mui/material';
 import { Lock as LockIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { authService } from '../services/authService';
 import { supabase } from '../services/supabaseClient';
 
 const ResetPassword: React.FC = () => {
@@ -45,7 +44,7 @@ const ResetPassword: React.FC = () => {
       void supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken || ''
-      }).catch(() => {});
+      }).catch(() => { });
     } else {
       setLinkValid(false);
       setError('Enlace inválido o expirado');
@@ -72,7 +71,10 @@ const ResetPassword: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const { error } = await authService.updatePassword(password);
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+
       if (error) {
         setError('Error al actualizar contraseña: ' + error.message);
         return;

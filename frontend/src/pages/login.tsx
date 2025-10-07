@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate,Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -9,7 +9,7 @@ import {
   Typography,
   Alert,
   InputAdornment,
-  CircularProgress,
+  CircularProgress
 } from '@mui/material';
 import { Email, Lock } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
@@ -20,27 +20,50 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { currentUser, signIn, role, roleLoading } = useAuth();
 
-  const { login, user, role, loading: authLoading } = useAuth();
-
-  useEffect(()=>{
-    if (!user) return;
-    if (role === 'coordinador') navigate('/dashboard-coordinador');
-    else if (role === 'estudiante') navigate('/dashboard-estudiante');
-    else navigate('/dashboard');
-  },[user,role,navigate]);
-
-    const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    const { error } = await login(email, password);
-    if (error && error instanceof Error) {
-      setError(error.message);
-    }
+    try {
+      const { data, error } = await signIn({ email, password });
+      if (error) {
+        setError(error.message);
+        return;
+      }
 
-    setLoading(false);
+      // Prefer the user returned by signIn, fall back to currentUser
+      const signedUser = data?.user ?? currentUser;
+
+      // Wait for roleLoading to finish but with a timeout to avoid UI hang
+      const waitForRoleResolution = () => new Promise<void>(resolve => {
+        const maxMs = 5000;
+        const start = Date.now();
+        const check = () => {
+          if (!roleLoading) return resolve();
+          if (Date.now() - start >= maxMs) return resolve();
+          setTimeout(check, 100);
+        };
+        check();
+      });
+
+      await waitForRoleResolution();
+
+      const resolvedRole = role ?? (signedUser as any)?.role;
+      console.log('Role resolved:', resolvedRole);
+      if (resolvedRole === 'coordinador') {
+        navigate('/coordinador/dashboard');
+      } else {
+        navigate('/estudiante/dashboard');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el login';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -109,11 +132,18 @@ const Login: React.FC = () => {
 
             <Button
               type="submit"
-              disabled={loading || authLoading}
+              disabled={loading}
               size="large"
               sx={{ mt: 3, py: 1.5 }}
             >
-              {loading || authLoading ? (<><CircularProgress size={20} sx={{ mr: 1 }} />Iniciando sesión...</>) : ('Iniciar Sesión')}
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  Iniciando sesión...
+                </>
+              ) : (
+                'Iniciar Sesión'
+              )}
             </Button>
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
@@ -127,13 +157,6 @@ const Login: React.FC = () => {
                   Regístrate aquí
                 </Button>
               </Typography>
-            </Box>
-            <Box sx={{ textAlign: 'center'}}>
-            <Link to="/forgot-password" style={{ textDecoration: 'none', marginTop: 16, display: 'inline-block' }}>
-              <Typography variant="body2" color="primary">
-                ¿Olvidaste tu contraseña?
-              </Typography>
-            </Link>
             </Box>
           </Box>
         </Paper>

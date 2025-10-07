@@ -4,7 +4,7 @@ export interface DatabaseUser {
   created_at: string;
   user_metadata?: {
     full_name?: string;
-    role?: 'estudiante' | 'coordinador';
+  role?: 'estudiante' | 'coordinador';
   };
 }
 

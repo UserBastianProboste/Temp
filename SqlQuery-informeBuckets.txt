@@ -1,0 +1,294 @@
+-- Creación de tabla informe
+CREATE TABLE IF NOT EXISTS informes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  coordinador_id UUID REFERENCES coordinadores(id) ON DELETE CASCADE,
+  estudiante_id UUID REFERENCES estudiantes(id) ON DELETE CASCADE,
+  nombre TEXT NOT NULL,
+  ruta TEXT NOT NULL,    
+  bucket TEXT NOT NULL DEFAULT 'documentos',
+  size BIGINT,
+  mime TEXT,
+  public BOOLEAN DEFAULT false,
+  uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE informes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.informes ENABLE ROW LEVEL SECURITY;
+
+--Politicas de tabla informe
+-- Estudiantes: INSERT solo si el estudiante_id pertenece al usuario autenticado
+CREATE POLICY subir_informes
+  ON public.informes
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.estudiantes
+      WHERE estudiantes.id = informes.estudiante_id
+        AND estudiantes.user_id = auth.uid()::uuid
+    )
+  );
+
+-- 2) Estudiantes: SELECT (solo sus propios informes)
+CREATE POLICY visualizar_informes
+  ON public.informes
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.estudiantes
+      WHERE estudiantes.id = informes.estudiante_id
+        AND estudiantes.user_id = auth.uid()::uuid
+    )
+  );
+
+-- 3) Estudiantes: actualizar_informes
+CREATE POLICY students_update_own
+  ON public.informes
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.estudiantes
+      WHERE estudiantes.id = informes.estudiante_id
+        AND estudiantes.user_id = auth.uid()::uuid
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.estudiantes
+      WHERE estudiantes.id = informes.estudiante_id
+        AND estudiantes.user_id = auth.uid()::uuid
+    )
+  );
+
+-- 4) Estudiantes: eliminar_informes
+CREATE POLICY students_delete_own
+  ON public.informes
+  FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.estudiantes
+      WHERE estudiantes.id = informes.estudiante_id
+        AND estudiantes.user_id = auth.uid()::uuid
+    )
+  );
+
+-- 5) Coordinadores: SELECT (pueden ver informes si están en la tabla coordinadores)
+CREATE POLICY ver_informes
+  ON public.informes
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  );
+
+-- 6) Coordinadores: UPDATE (si están en coordinadores; el resultado tambien debe cumplirlo)
+CREATE POLICY actualizar_informes
+  ON public.informes
+  FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  );
+
+-- Creacion de buckests de almacenamiento de informes e documentacion
+INSERT INTO storage.buckets (id, name, public, avif_autodetection, created_at, updated_at)
+SELECT 'informe_avance_practica', 'informe_avance_practica', false, false, now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'informe_avance_practica');
+
+INSERT INTO storage.buckets (id, name, public, avif_autodetection, created_at, updated_at)
+SELECT 'informe_final_practica', 'informe_final_practica', false, false, now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'informe_final_practica');
+
+INSERT INTO storage.buckets (id, name, public, avif_autodetection, created_at, updated_at)
+SELECT 'documentacion', 'documentacion', true, false, now(), now()
+WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'documentacion');
+
+-- Creacion de políticas para buckets
+CREATE POLICY "usuarios_pueden_insertar_sus_archivos"
+  ON storage.objects
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'informe_avance_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "usuarios_pueden_ver_sus_archivos"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'informe_avance_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "usuarios_pueden_actualizar_sus_archivos"
+  ON storage.objects
+  FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'informe_avance_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  )
+  WITH CHECK (
+    bucket_id = 'informe_avance_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "usuarios_pueden_eliminar_sus_archivos"
+  ON storage.objects
+  FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'informe_avance_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "coordinadores_pueden_ver_todos"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'informe_avance_practica'
+    AND EXISTS (
+      SELECT 1 FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  );
+
+CREATE POLICY "coordinadores_pueden_actualizar"
+  ON storage.objects
+  FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'informe_avance_practica'
+    AND EXISTS (
+      SELECT 1 FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  )
+  WITH CHECK (
+    bucket_id = 'informe_avance_practica'
+    AND EXISTS (
+      SELECT 1 FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  );
+
+CREATE POLICY "usuarios_insertar_sus_archivos"
+  ON storage.objects
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'informe_final_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "usuarios_ver_sus_archivos"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'informe_final_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "usuarios_actualizar_sus_archivos"
+  ON storage.objects
+  FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'informe_final_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  )
+  WITH CHECK (
+    bucket_id = 'informe_final_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "usuarios_eliminar_sus_archivos"
+  ON storage.objects
+  FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'informe_final_practica'
+    AND split_part(name, '/', 2) ~ '^[0-9a-fA-F-]{36}$'
+    AND auth.uid()::uuid = split_part(name, '/', 2)::uuid
+  );
+
+CREATE POLICY "coordinadores_ver_todos"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'informe_final_practica'
+    AND EXISTS (
+      SELECT 1 FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  );
+
+CREATE POLICY "coordinadores_actualizar"
+  ON storage.objects
+  FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'informe_final_practica'
+    AND EXISTS (
+      SELECT 1 FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  )
+  WITH CHECK (
+    bucket_id = 'informe_final_practica'
+    AND EXISTS (
+      SELECT 1 FROM public.coordinadores
+      WHERE coordinadores.user_id = auth.uid()::uuid
+    )
+  );
+
+-- Funcion para que cuando se suba un informe, este se asocie al unico coordinador existente
+CREATE OR REPLACE FUNCTION public.obtener_coordinador_id()
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT CASE
+    WHEN COUNT(*) = 1 THEN (SELECT id FROM public.coordinadores LIMIT 1)
+    ELSE NULL
+  END
+  FROM public.coordinadores;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.obtener_coordinador_id() TO authenticated;

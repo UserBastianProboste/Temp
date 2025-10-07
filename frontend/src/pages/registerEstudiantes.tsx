@@ -1,26 +1,44 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Container,
-  Grid,
-  InputAdornment,
-  Paper,
-  TextField,
-  Typography,
-} from '@mui/material';
-import { Email, Person, Phone, School } from '@mui/icons-material';
-
-import { authService } from '../services/authService';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import Container from '@mui/material/Container';
+import InputAdornment from '@mui/material/InputAdornment';
+import MenuItem from '@mui/material/MenuItem';
+import Paper from '@mui/material/Paper';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import Grid from '@mui/material/Grid';
+import Email from '@mui/icons-material/Email';
+import Person from '@mui/icons-material/Person';
+import Phone from '@mui/icons-material/Phone';
+import School from '@mui/icons-material/School';
+import { useAuth } from '../hooks/useAuth';
 import { estudianteService } from '../services/estudianteService';
+import { debugSession } from '../services/supabaseClient';
+
+interface RegisterFormData {
+  email: string;
+  password: string;
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  carrera: string;
+}
+
+const carreras = [
+  'Ingeniería Civil Informática',
+  'Ingeniería Civil Industrial',
+  'Ingeniería Comercial',
+  'Ingeniería Civil Eléctrica',
+  'Ingeniería en Construcción',
+  'Ingeniería en Prevención de Riesgos y Medio Ambiente',
+];
 
 const RegisterEstudiantes: React.FC = () => {
-  // === Estado local ===
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
     password: '',
     nombre: '',
@@ -30,81 +48,106 @@ const RegisterEstudiantes: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
-  // === Manejadores de eventos ===
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handleRegister = async (event: React.FormEvent) => {
+  const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setLoading(true);
     setError('');
 
     if (formData.password.trim().length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres');
-      setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     try {
       console.log('=== INICIANDO REGISTRO ===');
       console.log('Datos del formulario:', formData);
 
-      // === Paso 1: Registrar usuario en Supabase Auth ===
-      console.log('Paso 1: Registrando usuario en Auth...');
-      const { data: authData, error: authError } = await authService.signUp(
-        formData.email,
-        formData.password,
-        {
-          full_name: `${formData.nombre} ${formData.apellido}`,
-          role: 'estudiante'
+      const email = formData.email.trim();
+      const password = formData.password;
+      const fullName = `${formData.nombre} ${formData.apellido}`.trim();
+      const options = {
+        data: {
+          full_name: fullName,
+          role: 'estudiante',
+        },
+      } as const;
+
+      let signUpData: Awaited<ReturnType<typeof signUp>>['data'] | null = null;
+      let signUpError: Awaited<ReturnType<typeof signUp>>['error'] | null = null;
+
+      try {
+        const result = await signUp({ email, password, options });
+        signUpData = result.data;
+        signUpError = result.error;
+        console.log('Resultado Auth:', result);
+      } catch (signUpException) {
+        console.error('signUp threw:', signUpException);
+        try {
+          await debugSession();
+        } catch (sessionError) {
+          console.debug('debugSession falló', sessionError);
         }
-      );
-
-      console.log('Resultado Auth:', { authData, authError });
-
-      if (authError) {
-        console.error('Error en autenticación:', authError);
-        setError(authError.message);
+        setError('Error al registrar usuario. Revise la consola para más detalles.');
         return;
       }
 
-      if (authData.user) {
-        console.log('Paso 2: Usuario creado, creando perfil...');
-        console.log('User ID:', authData.user.id);
+      if (signUpError) {
+        console.error('Error en autenticación:', signUpError);
+        try {
+          await debugSession();
+        } catch (sessionError) {
+          console.debug('debugSession falló', sessionError);
+        }
+        const message = signUpError.message || String(signUpError);
+        setError(message);
+        return;
+      }
 
-        // === Paso 2: Crear perfil de estudiante ===
-        const { data: estudianteData, error: estudianteError } =
-          await estudianteService.create({
-            user_id: authData.user.id,
-            nombre: formData.nombre,
-            apellido: formData.apellido,
-            email: formData.email,
-            telefono: formData.telefono,
-            carrera: formData.carrera,
-          });
+      const userId = signUpData?.user?.id;
+      if (!userId) {
+        console.warn('signUp no devolvió usuario; puede requerir confirmación por correo.');
+        setError('Registro iniciado. Revisa tu correo para confirmar tu cuenta antes de ingresar.');
+        navigate('/login');
+        return;
+      }
 
-        console.log('Resultado Estudiante:', { estudianteData, estudianteError });
+      try {
+        const { error: estudianteError } = await estudianteService.create({
+          user_id: userId,
+          nombre: formData.nombre.trim(),
+          apellido: formData.apellido.trim(),
+          email,
+          telefono: formData.telefono.trim(),
+          carrera: formData.carrera,
+        });
 
         if (estudianteError) {
           console.error('Error al crear perfil de estudiante:', estudianteError);
           setError(`Error al crear el perfil de estudiante: ${estudianteError.message}`);
           return;
         }
-
-        console.log('=== REGISTRO EXITOSO ===');
-        navigate('/login');
+      } catch (studentException) {
+        console.error('Excepción al crear estudiante:', studentException);
+        setError('Error inesperado al crear el perfil de estudiante.');
+        return;
       }
+
+      console.log('=== REGISTRO EXITOSO ===');
+      navigate('/login');
     } catch (error) {
-      console.error('Error en catch:', error);
+      console.error('Error inesperado durante el registro:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el registro';
       setError(errorMessage);
     } finally {
@@ -115,20 +158,21 @@ const RegisterEstudiantes: React.FC = () => {
   return (
     <Box
       sx={{
-        alignItems: 'center',
         backgroundColor: 'background.default',
         display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
-        minHeight: '100vh',
+        minHeight:'100vh'
+
       }}
+
     >
-      <Container
-        maxWidth="md"
-        sx={{
-          alignItems: 'center',
-          display: 'flex',
-          justifyContent: 'center',
-        }}
+      <Container maxWidth="md"
+                  sx={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+  }}
       >
         <Paper
           elevation={3}
@@ -154,7 +198,7 @@ const RegisterEstudiantes: React.FC = () => {
             </Alert>
           )}
 
-          <Box component="form" noValidate onSubmit={handleRegister}>
+          <Box component="form" onSubmit={handleRegister} noValidate>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
@@ -255,6 +299,8 @@ const RegisterEstudiantes: React.FC = () => {
                   value={formData.carrera}
                   onChange={handleChange}
                   fullWidth
+                  select
+                  required
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -262,7 +308,13 @@ const RegisterEstudiantes: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
-                />
+                >
+                  {carreras.map(carrera => (
+                    <MenuItem key={carrera} value={carrera}>
+                      {carrera}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
 
               <Grid size={{ xs: 12 }}>

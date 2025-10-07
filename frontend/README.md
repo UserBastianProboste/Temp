@@ -4,8 +4,6 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
 ## Expanding the ESLint configuration
 
@@ -67,3 +65,12 @@ export default tseslint.config([
   },
 ])
 ```
+## Notificaciones y función de envío de correo
+
+Este repo incluye un ejemplo para enviar notificaciones al coordinador cuando un estudiante envía el formulario de práctica.
+
+- SQL para crear la tabla `notificaciones`: `sql/create_notificaciones.sql`
+- Ejemplo de Supabase Edge Function: `supabase_functions/send_coordinator_notification/index.ts`
+- Instrucciones de despliegue en: `supabase_functions/send_coordinator_notification/README.md`
+
+Sigue las instrucciones del README de la función para desplegarla y configurar las variables de entorno (por ejemplo, `SENDGRID_API_KEY` y `FROM_EMAIL`).

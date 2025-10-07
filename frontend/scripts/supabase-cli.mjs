@@ -60,7 +60,7 @@ function assertEnv({ supabaseUrl, serviceRoleKey }) {
 
   if (!serviceRoleKey) {
     console.warn(
-      '⚠️  No se encontró SUPABASE_SERVICE_ROLE_KEY. Se usará la clave pública, lo que puede fallar si tienes RLS.'
+      'No se encontró SUPABASE_SERVICE_ROLE_KEY. Se usará la clave pública, lo que puede fallar si tienes RLS.'
     );
   }
 }
@@ -120,9 +120,9 @@ async function registerEmpresa(supabase, rl) {
     .single();
 
   if (error) {
-    console.error('Error al registrar la empresa:', error.message);
+    console.error('Error al registrar la empresa: D:', error.message);
   } else {
-    console.log('✅ Empresa registrada correctamente.');
+    console.log('Empresa registrada correctamente. :D ');
     console.log(data?.[0] ?? '');
   }
 }
@@ -155,7 +155,7 @@ async function registerCoordinador(supabase, rl) {
   if (error) {
     console.error('Error al registrar el coordinador:', error.message);
   } else {
-    console.log('✅ Coordinador registrado correctamente.');
+    console.log('Coordinador registrado correctamente.');
     console.log(data?.[0] ?? '');
   }
 }
@@ -177,7 +177,7 @@ async function listRecords(supabase, rl) {
   const table = tables[choice.trim()];
 
   if (!table) {
-    console.log('Opción inválida.');
+    console.log('Opción inválida. o:');
     return;
   }
 

@@ -192,24 +192,6 @@ ALTER TABLE estudiantes DISABLE ROW LEVEL SECURITY;
 
 ## 🚀 Instalación y Uso
 
-### Opción 1: con Docker (recomendado)
-
-1. Asegúrate de tener instalados **Docker** y **Docker Compose v2**.
-2. Verifica que el archivo `frontend/.env` contenga `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
-3. Desde la raíz del proyecto levanta el servicio:
-
-   ```bash
-   docker compose up --build
-   ```
-
-   Esto construirá la imagen (incluyendo dependencias) y dejará corriendo Vite en `http://localhost:5173`.
-
-4. Cuando quieras detener el entorno, ejecuta `docker compose down`.
-
-> 🛠️ La primera vez el contenedor instala automáticamente las dependencias y las guarda en un volumen, por lo que los siguientes arranques son inmediatos. Además, los cambios en los archivos dentro de `frontend/` se reflejan al instante gracias al montaje en caliente.
-
-### Opción 2: entorno local (sin Docker)
-
 ```bash
 # 1. Clonar repositorio
 git clone [url-del-repositorio]
@@ -221,31 +203,9 @@ npm install
 
 # 3. Configurar variables de entorno (ver arriba)
 
-# 4. Iniciar servidor de desarrollo
-npm run dev -- --host
+# 4. Iniciar servidor de desarrollo  
+npm run dev
 ```
-
-### CLI de depuración para Supabase
-
-Para registrar rápidamente empresas o coordinadores, o listar el contenido de las tablas principales, puedes utilizar el script interactivo incluido:
-
-```bash
-# Ejecutar el CLI desde la raíz del repositorio
-npm run db:cli --prefix frontend
-```
-
-El script intenta cargar automáticamente las variables de entorno desde `.env` (en la raíz) o `frontend/.env`. Asegúrate de definir al menos `SUPABASE_URL` y una clave con permisos de inserción, idealmente `SUPABASE_SERVICE_ROLE_KEY`. Si solo dispones de la clave pública (anon), las operaciones podrían fallar si tienes RLS activado.
-
-#### Build de producción con Docker
-
-Si quieres obtener una imagen lista para desplegar estáticamente puedes ejecutar:
-
-```bash
-docker build -f frontend/Dockerfile --target prod -t consultoria-frontend:prod frontend
-docker run -p 8080:80 consultoria-frontend:prod
-```
-
-El contenedor final usa **Nginx** y expone el build optimizado en `http://localhost:8080`.
 
 ## 📱 Funcionalidades por Rol
 
