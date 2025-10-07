@@ -4,6 +4,12 @@ import { AuthContext } from "../contexts/AuthContext"
 import { supabase } from "../services/supabaseClient"
 import type { Session, User } from "@supabase/supabase-js"
 
+const debugDelayRaw = Number(import.meta.env.VITE_DEBUG_AUTH_DELAY_MS ?? 0)
+const DEBUG_AUTH_DELAY_MS = Number.isFinite(debugDelayRaw) && debugDelayRaw > 0 ? debugDelayRaw : 0
+const maybeDelay = DEBUG_AUTH_DELAY_MS > 0
+  ? () => new Promise<void>(resolve => setTimeout(resolve, DEBUG_AUTH_DELAY_MS))
+  : () => Promise.resolve()
+
 const normalizeRole = (raw?: string | null): 'estudiante' | 'coordinador' | null => {
   if (!raw) return null
   const lowered = raw.toLowerCase()
@@ -65,6 +71,7 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
       setCurrentUser(user)
       setRoleLoading(true)
       setRole(extractRole(user))
+      await maybeDelay()
       setRoleLoading(false)
       setLoading(false)
     }
