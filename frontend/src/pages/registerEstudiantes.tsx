@@ -5,16 +5,23 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
+import Grid from '@mui/material/Grid';
 import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Step from '@mui/material/Step';
+import StepLabel from '@mui/material/StepLabel';
+import Stepper from '@mui/material/Stepper';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
 import Email from '@mui/icons-material/Email';
+import AssignmentInd from '@mui/icons-material/AssignmentInd';
+import Lock from '@mui/icons-material/Lock';
+import LocationCity from '@mui/icons-material/LocationCity';
 import Person from '@mui/icons-material/Person';
 import Phone from '@mui/icons-material/Phone';
 import School from '@mui/icons-material/School';
+import Verified from '@mui/icons-material/Verified';
 import { useAuth } from '../hooks/useAuth';
 import { estudianteService } from '../services/estudianteService';
 import { debugSession } from '../services/supabaseClient';
@@ -22,10 +29,14 @@ import { debugSession } from '../services/supabaseClient';
 interface RegisterFormData {
   email: string;
   password: string;
+  confirmPassword: string;
+  verificationCode: string;
   nombre: string;
   apellido: string;
+  rut: string;
   telefono: string;
   carrera: string;
+  sede: string;
 }
 
 const carreras = [
@@ -41,15 +52,53 @@ const RegisterEstudiantes: React.FC = () => {
   const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
     password: '',
+    confirmPassword: '',
+    verificationCode: '',
     nombre: '',
     apellido: '',
+    rut: '',
     telefono: '',
     carrera: '',
+    sede: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeStep, setActiveStep] = useState(0);
   const navigate = useNavigate();
   const { signUp } = useAuth();
+
+  const steps = ['Identidad', 'Seguridad', 'Programa'];
+
+  const isStepOneComplete =
+    Boolean(formData.nombre.trim() && formData.apellido.trim() && formData.rut.trim());
+
+  const isStepTwoComplete =
+    Boolean(
+      formData.email.trim() &&
+        formData.password.length >= 8 &&
+        formData.confirmPassword &&
+        formData.password === formData.confirmPassword,
+    );
+
+  const handleNext = () => {
+    if (activeStep === 0 && !isStepOneComplete) {
+      setError('Completa tu nombre, apellido y RUT antes de continuar.');
+      return;
+    }
+
+    if (activeStep === 1 && !isStepTwoComplete) {
+      setError('Ingresa un correo válido y confirma tu contraseña.');
+      return;
+    }
+
+    setError('');
+    setActiveStep(prev => Math.min(prev + 1, steps.length - 1));
+  };
+
+  const handleBack = () => {
+    setError('');
+    setActiveStep(prev => Math.max(prev - 1, 0));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -63,8 +112,18 @@ const RegisterEstudiantes: React.FC = () => {
     event.preventDefault();
     setError('');
 
+    if (!isStepTwoComplete) {
+      setError('Revisa los datos de contacto y tus credenciales antes de registrar.');
+      return;
+    }
+
     if (formData.password.trim().length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Las contraseñas no coinciden');
       return;
     }
 
@@ -81,6 +140,7 @@ const RegisterEstudiantes: React.FC = () => {
         data: {
           full_name: fullName,
           role: 'estudiante',
+          rut: formData.rut.trim(),
         },
       } as const;
 
@@ -130,7 +190,7 @@ const RegisterEstudiantes: React.FC = () => {
           apellido: formData.apellido.trim(),
           email,
           telefono: formData.telefono.trim(),
-          carrera: formData.carrera,
+          carrera: formData.carrera || null,
         });
 
         if (estudianteError) {
@@ -162,35 +222,43 @@ const RegisterEstudiantes: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight:'100vh'
-
+        minHeight: '100vh',
+        px: 2,
       }}
-
     >
-      <Container maxWidth="md"
-                  sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-  }}
+      <Container
+        maxWidth="md"
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
       >
         <Paper
-          elevation={3}
+          elevation={4}
           sx={{
-            p: 4,
-            borderRadius: 2,
+            p: { xs: 3, sm: 5 },
+            borderRadius: 3,
             backgroundColor: 'white',
-            margin: '0 auto',
+            width: '100%',
           }}
         >
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Typography variant="h4" color="primary" gutterBottom>
               Registro de Estudiante
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Completa el formulario para crear tu cuenta
+              Completa los pasos para crear tu cuenta
             </Typography>
           </Box>
+
+          <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+            {steps.map(label => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -198,138 +266,277 @@ const RegisterEstudiantes: React.FC = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleRegister} noValidate>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  name="nombre"
-                  label="Nombre"
-                  value={formData.nombre}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
+          <Box component="form" onSubmit={handleRegister}>
+            <Box
+              key={activeStep}
+              sx={{
+                animation: 'fadeInUp 400ms ease',
+                '@keyframes fadeInUp': {
+                  from: { opacity: 0, transform: 'translateY(12px)' },
+                  to: { opacity: 1, transform: 'translateY(0)' },
+                },
+              }}
+            >
+              {activeStep === 0 && (
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="nombre"
+                      label="Nombre"
+                      value={formData.nombre}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Person color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
 
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  name="apellido"
-                  label="Apellido"
-                  value={formData.apellido}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="apellido"
+                      label="Apellido"
+                      value={formData.apellido}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Person color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
 
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  name="email"
-                  type="email"
-                  label="Correo Electrónico"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Email color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="rut"
+                      label="RUT"
+                      placeholder="12.345.678-9"
+                      value={formData.rut}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <AssignmentInd color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
 
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  name="password"
-                  type="password"
-                  label="Contraseña"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                  inputProps={{ minLength: 8 }}
-                  error={!!error && error.toLowerCase().includes('contraseña')}
-                  helperText={
-                    formData.password && formData.password.length < 8
-                      ? 'Debe tener al menos 8 caracteres'
-                      : 'Mínimo 8 caracteres'
-                  }
-                />
-              </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="telefono"
+                      type="tel"
+                      label="Teléfono"
+                      placeholder="+56 9 1234 5678"
+                      value={formData.telefono}
+                      onChange={handleChange}
+                      fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Phone color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              )}
 
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  name="telefono"
-                  type="tel"
-                  label="Teléfono"
-                  value={formData.telefono}
-                  onChange={handleChange}
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
+              {activeStep === 1 && (
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      name="email"
+                      type="email"
+                      label="Correo Electrónico"
+                      value={formData.email}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Email color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
 
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  name="carrera"
-                  label="Carrera"
-                  value={formData.carrera}
-                  onChange={handleChange}
-                  fullWidth
-                  select
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <School color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
+                  <Grid item xs={12}>
+                    <TextField
+                      name="verificationCode"
+                      label="Código de verificación"
+                      value={formData.verificationCode}
+                      onChange={handleChange}
+                      placeholder="Ingresa el código enviado a tu correo"
+                      fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Verified color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      helperText="Este paso es una simulación, puedes continuar sin completar el código."
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      name="password"
+                      type="password"
+                      label="Contraseña"
+                      value={formData.password}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      inputProps={{ minLength: 8 }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Lock color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      error={Boolean(formData.password && formData.password.length < 8)}
+                      helperText={
+                        formData.password && formData.password.length < 8
+                          ? 'Debe tener al menos 8 caracteres'
+                          : 'Mínimo 8 caracteres'
+                      }
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      name="confirmPassword"
+                      type="password"
+                      label="Confirmar Contraseña"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      fullWidth
+                      required
+                      inputProps={{ minLength: 8 }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <Lock color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      error={
+                        Boolean(
+                          formData.confirmPassword &&
+                            formData.confirmPassword !== formData.password,
+                        )
+                      }
+                      helperText={
+                        formData.confirmPassword &&
+                        formData.confirmPassword !== formData.password
+                          ? 'Las contraseñas deben coincidir'
+                          : 'Repite la contraseña para confirmarla'
+                      }
+                    />
+                  </Grid>
+                </Grid>
+              )}
+
+              {activeStep === 2 && (
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      name="carrera"
+                      label="Carrera"
+                      value={formData.carrera}
+                      onChange={handleChange}
+                      select
+                      fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <School color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    >
+                      {carreras.map(carrera => (
+                        <MenuItem key={carrera} value={carrera}>
+                          {carrera}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      name="sede"
+                      label="Sede"
+                      placeholder="Ej: Campus San Joaquín"
+                      value={formData.sede}
+                      onChange={handleChange}
+                      fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LocationCity color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              )}
+            </Box>
+
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mt: 4,
+                flexWrap: 'wrap',
+                gap: 2,
+              }}
+            >
+              <Button
+                variant="outlined"
+                color="inherit"
+                disabled={activeStep === 0 || loading}
+                onClick={handleBack}
+              >
+                Paso anterior
+              </Button>
+
+              {activeStep < steps.length - 1 ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleNext}
+                  disabled={(activeStep === 0 && !isStepOneComplete) || (activeStep === 1 && !isStepTwoComplete) || loading}
                 >
-                  {carreras.map(carrera => (
-                    <MenuItem key={carrera} value={carrera}>
-                      {carrera}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
+                  Siguiente paso
+                </Button>
+              ) : (
                 <Button
                   type="submit"
-                  disabled={
-                    loading ||
-                    !formData.email ||
-                    !formData.nombre ||
-                    !formData.apellido ||
-                    formData.password.length < 8
-                  }
-                  size="large"
-                  fullWidth
-                  sx={{ mt: 2, py: 1.5 }}
+                  variant="contained"
+                  color="primary"
+                  disabled={loading || !isStepTwoComplete}
+                  sx={{ minWidth: 180 }}
                 >
                   {loading ? (
                     <>
@@ -337,26 +544,24 @@ const RegisterEstudiantes: React.FC = () => {
                       Registrando...
                     </>
                   ) : (
-                    'Registrar Estudiante'
+                    'Finalizar registro'
                   )}
                 </Button>
-              </Grid>
+              )}
+            </Box>
+          </Box>
 
-              <Grid size={{ xs: 12 }}>
-                <Box sx={{ textAlign: 'center', mt: 2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    ¿Ya tienes una cuenta?{' '}
-                    <Button
-                      variant="text"
-                      onClick={() => navigate('/login')}
-                      sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
-                    >
-                      Inicia sesión aquí
-                    </Button>
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
+          <Box sx={{ textAlign: 'center', mt: 4 }}>
+            <Typography variant="body2" color="text.secondary">
+              ¿Ya tienes una cuenta?{' '}
+              <Button
+                variant="text"
+                onClick={() => navigate('/login')}
+                sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
+              >
+                Inicia sesión aquí
+              </Button>
+            </Typography>
           </Box>
         </Paper>
       </Container>
