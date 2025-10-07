@@ -79,7 +79,7 @@ const RegisterEstudiantes: React.FC = () => {
   const isStepOneComplete =
     Boolean(formData.nombre.trim() && formData.apellido.trim() && formData.rut.trim());
 
-  const { email, verificationCode, password, confirmPassword } = formData;
+  const { email, verificationCode, password, confirmPassword, carrera, sede } = formData;
 
   const isStepTwoComplete = useMemo(
     () =>
