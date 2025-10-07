@@ -79,7 +79,7 @@ const RegisterEstudiantes: React.FC = () => {
   const isStepOneComplete =
     Boolean(formData.nombre.trim() && formData.apellido.trim() && formData.rut.trim());
 
-  const { email, verificationCode, password, confirmPassword } = formData;
+  const { email, verificationCode, password, confirmPassword, carrera, sede } = formData;
 
   const isStepTwoComplete = useMemo(
     () =>
@@ -92,6 +92,11 @@ const RegisterEstudiantes: React.FC = () => {
           password === confirmPassword,
       ),
     [confirmPassword, email, emailPhase, password, verificationCode],
+  );
+
+  const isStepThreeComplete = useMemo(
+    () => Boolean(carrera.trim() && sede.trim()),
+    [carrera, sede],
   );
 
   useEffect(() => {
@@ -243,6 +248,12 @@ const RegisterEstudiantes: React.FC = () => {
       return;
     }
 
+    if (!isStepThreeComplete) {
+      setError('Selecciona tu carrera y especifica la sede antes de finalizar el registro.');
+      setActiveStep(2);
+      return;
+    }
+
     if (formData.password.trim().length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres');
       return;
@@ -262,6 +273,8 @@ const RegisterEstudiantes: React.FC = () => {
       const email = formData.email.trim();
       const password = formData.password;
       const fullName = `${formData.nombre} ${formData.apellido}`.trim();
+      const selectedCarrera = formData.carrera.trim();
+      const selectedSede = formData.sede.trim();
       const options = {
         data: {
           full_name: fullName,
@@ -316,7 +329,8 @@ const RegisterEstudiantes: React.FC = () => {
           apellido: formData.apellido.trim(),
           email,
           telefono: formData.telefono.trim(),
-          carrera: formData.carrera || null,
+          carrera: selectedCarrera || null,
+          sede: selectedSede || null,
         });
 
         if (estudianteError) {
@@ -770,6 +784,7 @@ const RegisterEstudiantes: React.FC = () => {
                       onChange={handleChange}
                       select
                       fullWidth
+                      required
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -777,7 +792,11 @@ const RegisterEstudiantes: React.FC = () => {
                           </InputAdornment>
                         ),
                       }}
+                      helperText={!formData.carrera ? 'Selecciona la carrera que estás cursando' : ' '}
                     >
+                      <MenuItem value="" disabled>
+                        Selecciona una carrera
+                      </MenuItem>
                       {carreras.map(carrera => (
                         <MenuItem key={carrera} value={carrera}>
                           {carrera}
@@ -794,6 +813,7 @@ const RegisterEstudiantes: React.FC = () => {
                       value={formData.sede}
                       onChange={handleChange}
                       fullWidth
+                      required
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -801,6 +821,7 @@ const RegisterEstudiantes: React.FC = () => {
                           </InputAdornment>
                         ),
                       }}
+                      helperText={!formData.sede ? 'Indica la sede o campus donde estudias' : ' '}
                     />
                   </Grid>
                 </Grid>
@@ -842,7 +863,7 @@ const RegisterEstudiantes: React.FC = () => {
                   type="submit"
                   variant="contained"
                   color="primary"
-                  disabled={loading || !isStepTwoComplete}
+                  disabled={loading || !isStepTwoComplete || !isStepThreeComplete}
                   sx={{ minWidth: 180 }}
                 >
                   {loading ? (
