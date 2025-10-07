@@ -480,7 +480,7 @@ const ResourcesCard: FC<{ items: DownloadItem[]; title?: string }> = ({
 
 export default function AdjuntarInformesEstudiantes(): React.ReactElement {
   return (
-    <DashboardTemplate title="Panel de estudiante">
+    <DashboardTemplate title="Adjuntar informes">
       <Box
         sx={{
           display: "flex",

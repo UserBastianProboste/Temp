@@ -36,7 +36,7 @@ const SeleccionPractica: React.FC = () => {
   };
 
   return (
-    <DashboardTemplate title="">
+    <DashboardTemplate title="Autoevaluación">
       <Box sx={{ mt: 4, mb: 6, px: 2 }}>
         {/* Título general */}
         <Typography

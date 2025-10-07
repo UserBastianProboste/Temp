@@ -139,7 +139,7 @@ const Autoevaluacion: React.FC = () => {
   if (estudiante === false) return <p>Error al cargar los datos del estudiante</p>;
 
   return (
-    <DashboardTemplate title="Panel de estudiante">
+    <DashboardTemplate title="Autoevaluación">
       <Box
         sx={{ display: "flex", flexDirection: "column", gap: 4, mt: 4, mb: 6 }}
       >
