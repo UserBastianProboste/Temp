@@ -1,6 +1,7 @@
 // src/pages/PracticaProfesionalForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import DashboardTemplate from '../components/DashboardTemplate';
 import {
   Container,
   Paper,
@@ -540,7 +541,8 @@ const PracticaProfesionalForm: React.FC = () => {
   // Disable submit if we don't have the necessary user/estudiante to create records.
 
   return (
-    <Container component="main" maxWidth="md">
+    <DashboardTemplate>
+      <Container component="main" maxWidth="md">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <Typography
           component="h1"
@@ -822,6 +824,7 @@ const PracticaProfesionalForm: React.FC = () => {
         </Box>
       </Paper>
     </Container>
+    </DashboardTemplate>
   );
 };
 
