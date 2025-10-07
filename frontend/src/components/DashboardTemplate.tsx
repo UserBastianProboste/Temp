@@ -53,6 +53,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
   const { currentUser, signOut, loading, role, roleLoading } = useAuth();
   const theme = useTheme();
   const isWide = useMediaQuery('(min-aspect-ratio: 4/3)');
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -244,7 +245,9 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               width: 240,
               boxSizing: 'border-box',
               bgcolor: '#3f3f3e',
-              color: '#f3f3f3'
+              color: '#f3f3f3',
+              top: isWide ? 0 : isSmallScreen ? 56 : 64,
+              height: isWide ? '100%' : `calc(100% - ${isSmallScreen ? 56 : 64}px)`
             }
           }}
         >
