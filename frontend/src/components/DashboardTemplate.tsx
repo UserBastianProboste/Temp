@@ -290,18 +290,12 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               </IconButton>
             )}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar
-                variant="rounded"
-                sx={{
-                  bgcolor: theme.palette.primary.main,
-                  width: 44,
-                  height: 44,
-                  mr: 2,
-                  fontWeight: 700
-                }}
-              >
-                UA
-              </Avatar>
+              <Box
+                component="img"
+                src="/UA.svg"
+                alt="UA"
+                sx={{ width: 44, height: 44, mr: 2, objectFit: 'contain' }}
+              />
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" lineHeight={1.15} fontWeight={600}>
                   {headerTitle}
