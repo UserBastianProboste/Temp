@@ -74,3 +74,13 @@ Este repo incluye un ejemplo para enviar notificaciones al coordinador cuando un
 - Instrucciones de despliegue en: `supabase_functions/send_coordinator_notification/README.md`
 
 Sigue las instrucciones del README de la función para desplegarla y configurar las variables de entorno (por ejemplo, `SENDGRID_API_KEY` y `FROM_EMAIL`).
+
+## Depuración: forzar la pantalla de carga
+
+Si quieres ver la animación de `LoadingScreen` sin depender de retrasos reales en Supabase, puedes pedirle al proveedor de autenticación que simule una espera estableciendo la variable de entorno `VITE_DEBUG_AUTH_DELAY_MS` (valor en milisegundos). Por ejemplo:
+
+```bash
+VITE_DEBUG_AUTH_DELAY_MS=4000 npm run dev
+```
+
+También puedes añadir la variable al archivo `.env` de Vite mientras desarrollas. Con cualquier valor mayor que `0`, la app mantendrá el estado de carga durante el tiempo indicado, lo que te permite validar la pantalla de carga en todas las rutas protegidas.
