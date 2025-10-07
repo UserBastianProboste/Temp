@@ -16,6 +16,7 @@ export interface Estudiante {
   email: string;
   telefono?: string;
   carrera?: string;
+  sede?: string;
   created_at: string;
   updated_at: string;
 }
