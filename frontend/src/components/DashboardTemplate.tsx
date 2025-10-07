@@ -218,14 +218,12 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
           }}
         >
           <Toolbar sx={{ justifyContent: 'center', py: 3 }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
-                BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#d0d0d0' }}>
-                Universidad Autónoma de Chile
-              </Typography>
-            </Box>
+            <Box
+              component="img"
+              src="/PractiK.png"
+              alt="PractiK"
+              sx={{ maxWidth: 180, width: '100%', objectFit: 'contain' }}
+            />
           </Toolbar>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {renderMenuItems}
@@ -249,14 +247,12 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
           }}
         >
           <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
-                BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#d0d0d0' }}>
-                Universidad Autónoma de Chile
-              </Typography>
-            </Box>
+            <Box
+              component="img"
+              src="/PractiK.png"
+              alt="PractiK"
+              sx={{ maxWidth: 160, width: '100%', objectFit: 'contain' }}
+            />
           </Toolbar>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {renderMenuItems}
