@@ -299,9 +299,9 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
                   height: 52,
                   mr: 2,
                   borderRadius: '14px',
-                  bgcolor: '#ffffff',
+                  bgcolor: '#e2211c',
                   p: 1,
-                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)'
+                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.04)'
                 }}
               >
                 <Box
