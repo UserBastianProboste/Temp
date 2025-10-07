@@ -291,11 +291,26 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
             )}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Box
-                component="img"
-                src="/UA.svg"
-                alt="UA"
-                sx={{ width: 44, height: 44, mr: 2, objectFit: 'contain' }}
-              />
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 52,
+                  height: 52,
+                  mr: 2,
+                  borderRadius: '14px',
+                  bgcolor: '#ffffff',
+                  p: 1,
+                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)'
+                }}
+              >
+                <Box
+                  component="img"
+                  src="/UA.svg"
+                  alt="UA"
+                  sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" lineHeight={1.15} fontWeight={600}>
                   {headerTitle}
