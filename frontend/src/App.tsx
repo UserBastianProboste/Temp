@@ -54,7 +54,6 @@ function App() {
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
               </Route>
             
-              // Rutas para el rol de coordinador
               {/* Rutas para el rol de coordinador */}
               <Route path='/coordinador' element={<RouteGuard roleAllowed='coordinador' />}>
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />

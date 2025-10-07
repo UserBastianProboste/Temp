@@ -4,7 +4,7 @@ import { Card, CardContent } from "@mui/material";
 
 export default function HistorialSolicitudes(): React.ReactElement {
     return (
-        <DashboardTemplate title="Panel de estudiante">
+        <DashboardTemplate title="Historial de solicitudes">
             <Card>
                 <CardContent>
                     

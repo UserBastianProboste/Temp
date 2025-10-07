@@ -541,7 +541,7 @@ const PracticaProfesionalForm: React.FC = () => {
   // Disable submit if we don't have the necessary user/estudiante to create records.
 
   return (
-    <DashboardTemplate>
+    <DashboardTemplate title="Ficha de práctica">
       <Container component="main" maxWidth="md">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <Typography
