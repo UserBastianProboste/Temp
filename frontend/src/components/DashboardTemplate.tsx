@@ -218,14 +218,12 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
           }}
         >
           <Toolbar sx={{ justifyContent: 'center', py: 3 }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
-                BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#d0d0d0' }}>
-                Universidad Autónoma de Chile
-              </Typography>
-            </Box>
+            <Box
+              component="img"
+              src="/PractiK.png"
+              alt="PractiK"
+              sx={{ maxWidth: 180, width: '100%', objectFit: 'contain' }}
+            />
           </Toolbar>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {renderMenuItems}
@@ -249,14 +247,12 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
           }}
         >
           <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff' }}>
-                BAN<span style={{ color: theme.palette.primary.main }}>NER</span>
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#d0d0d0' }}>
-                Universidad Autónoma de Chile
-              </Typography>
-            </Box>
+            <Box
+              component="img"
+              src="/PractiK.png"
+              alt="PractiK"
+              sx={{ maxWidth: 160, width: '100%', objectFit: 'contain' }}
+            />
           </Toolbar>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
           {renderMenuItems}
@@ -291,18 +287,27 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               </IconButton>
             )}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar
-                variant="rounded"
+              <Box
                 sx={{
-                  bgcolor: theme.palette.primary.main,
-                  width: 44,
-                  height: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 52,
+                  height: 52,
                   mr: 2,
-                  fontWeight: 700
+                  borderRadius: '14px',
+                  bgcolor: '#ffffff',
+                  p: 1,
+                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)'
                 }}
               >
-                UA
-              </Avatar>
+                <Box
+                  component="img"
+                  src="/UA.svg"
+                  alt="UA"
+                  sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 <Typography variant="h6" lineHeight={1.15} fontWeight={600}>
                   {headerTitle}
