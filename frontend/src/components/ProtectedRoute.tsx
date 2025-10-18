@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import LoadingScreen from './LoadingScreen';
 
 interface ProtectedRouteProps {
   allowedRole?: 'estudiante' | 'coordinador';
@@ -24,15 +23,40 @@ function roleMatches(allowed: string | undefined, actual: string | undefined) {
 
 export default function ProtectedRoute({ allowedRole, children }: ProtectedRouteProps) {
   const { isAuthenticated, currentUser, loading, role, roleLoading } = useAuth();
-  if (loading || roleLoading) return <LoadingScreen />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  // Mostrar loading mientras verifica sesión
+  if (loading || roleLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <div>Cargando...</div>
+      </div>
+    );
+  }
+  
+  // Si no está autenticado, redirigir a login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
   const actualRole = (role ?? (currentUser as any)?.role) as string | undefined;
+  
+  // Si se requiere un rol específico
   if (allowedRole) {
-    if (allowedRole === 'estudiante') {
-      if (!isAuthenticated) return <Navigate to="/login" replace />;
-    } else {
-      if (!roleMatches(allowedRole, actualRole)) return <Navigate to="/login" replace />;
+    if (!roleMatches(allowedRole, actualRole)) {
+      // Redirigir al dashboard correcto según el rol del usuario
+      if (actualRole === 'coordinador') {
+        return <Navigate to="/coordinador/dashboard" replace />;
+      } else if (actualRole === 'estudiante') {
+        return <Navigate to="/estudiante/dashboard" replace />;
+      }
+      return <Navigate to="/login" replace />;
     }
   }
+  
   return <>{children}</>;
 }

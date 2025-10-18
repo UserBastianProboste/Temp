@@ -6,7 +6,7 @@ import Login from './pages/login';
 import RegisterEstudiantes from './pages/registerEstudiantes';
 import DashboardEstudiante from './pages/dashboardEstudiante';
 import DashboardCoordinador from './pages/dashboardCoordinador';
-import { AuthProvider } from "./providers/AuthProvider";
+
 import { RouteGuard } from './components/RouteGuard';
 import SeleccionPractica from "./pages/SeleccionPractica";
 import Autoevaluacion from './pages/autoevaluacion';
@@ -20,12 +20,12 @@ import CoordinadorPracticas from './pages/coordinadorPracticas';
 import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
 import CoordinadorEmpresas from './pages/coordinadorEmpresas';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
+import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -34,11 +34,12 @@ function App() {
               path="/register-estudiantes"
               element={<RegisterEstudiantes />}
             />
+            <Route path="/evaluacion-supervisor/:token" element={<EvaluacionSupervisorPublica />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/autoevaluacion" element={<Autoevaluacion />} />
             <Route path="/historial_solicitudes" element={<HistorialSolicitudes />} />
-            
+
             {/* Rutas protegidas por autenticación */}
             <Route path='/' element={<RouteGuard />}>
 
@@ -53,7 +54,7 @@ function App() {
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
               </Route>
-            
+
               {/* Rutas para el rol de coordinador */}
               <Route path='/coordinador' element={<RouteGuard roleAllowed='coordinador' />}>
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
@@ -64,7 +65,6 @@ function App() {
             </Route>
           </Routes>
         </Router>
-      </AuthProvider>
     </ThemeProvider>
   );
 }

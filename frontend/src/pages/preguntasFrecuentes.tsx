@@ -9,8 +9,7 @@ export default function PreguntasFrecuentes() {
           Preguntas frecuentes
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          Estamos preparando la información más solicitada por los estudiantes. A continuación encontrarás un mock
-          temporal mientras definimos los contenidos definitivos.
+          Estamos preparando preguntas que un estudiante pueda tener. :D
         </Typography>
         <List>
           <ListItem>

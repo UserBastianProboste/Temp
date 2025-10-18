@@ -4,11 +4,6 @@ import { AuthContext } from "../contexts/AuthContext"
 import { supabase } from "../services/supabaseClient"
 import type { Session, User } from "@supabase/supabase-js"
 
-const debugDelayRaw = Number(import.meta.env.VITE_DEBUG_AUTH_DELAY_MS ?? 0)
-const DEBUG_AUTH_DELAY_MS = Number.isFinite(debugDelayRaw) && debugDelayRaw > 0 ? debugDelayRaw : 0
-const maybeDelay = DEBUG_AUTH_DELAY_MS > 0
-  ? () => new Promise<void>(resolve => setTimeout(resolve, DEBUG_AUTH_DELAY_MS))
-  : () => Promise.resolve()
 
 const normalizeRole = (raw?: string | null): 'estudiante' | 'coordinador' | null => {
   if (!raw) return null
@@ -38,68 +33,64 @@ export const AuthProvider = ({children}: AuthProviderProps) => {
   useEffect(() => {
     let mounted = true
 
-    const handleSession = async (session: Session | null) => {
-      if (!mounted) return
+    const handleSession = (session: Session | null) => {
+      if (!mounted) return;
 
-      setCurrentSession(session ?? null)
-      const user = session?.user ?? null
+      const user = session?.user ?? null;
+      let extractedRole = extractRole(user);
 
+      // ✅ Extraer rol del JWT si existe
       if (session && user) {
         try {
-          // Attempt to read role claim directly from JWT (optional helper, may not exist)
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
-            const [, payloadB64] = session.access_token.split('.')
-            if (payloadB64) {
-              const payloadJson = JSON.parse(atob(payloadB64)) as Record<string, unknown>
-              const claimRole = typeof payloadJson.app_role === 'string'
-                ? payloadJson.app_role
-                : typeof payloadJson.role === 'string'
-                  ? payloadJson.role
-                  : undefined
-              if (claimRole) {
-                (user as any).role = claimRole
-              }
+          const [, payloadB64] = session.access_token.split('.')
+          if (payloadB64) {
+            const payloadJson = JSON.parse(atob(payloadB64)) as Record<string, unknown>
+            const claimRole = typeof payloadJson.app_role === 'string'
+              ? payloadJson.app_role
+              : typeof payloadJson.role === 'string'
+                ? payloadJson.role
+                : undefined
+            if (claimRole) {
+              (user as any).role = claimRole
+              extractedRole = normalizeRole(claimRole);
             }
+          }
         } catch (error) {
-          // ignore — we will fall back to user metadata
+          // Ignorar errores silenciosamente
         }
       }
 
+
       if (!mounted) return
 
+
+      setCurrentSession(session); 
       setCurrentUser(user)
       setRoleLoading(true)
-      setRole(extractRole(user))
-      await maybeDelay()
+      setRole(extractedRole) 
       setRoleLoading(false)
-      setLoading(false)
+      setLoading(false) 
     }
 
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        await handleSession(session ?? null)
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error obteniendo sesión:', error);
+        }
+
+        handleSession(session ?? null)
       } catch (error) {
-        console.debug('initial getSession failed', error)
+        console.error('Error crítico en getSession:', error)
         setLoading(false)
       }
     })()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      await handleSession(session ?? null)
-
-      switch (event) {
-        case 'SIGNED_IN':
-          console.log('Usuario conectado')
-          break
-        case 'SIGNED_OUT':
-          console.log('Usuario desconectado')
-          break
-        case 'TOKEN_REFRESHED':
-          console.log('Token renovado automáticamente')
-          break
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      handleSession(session ?? null)
     })
 
     return () => {

@@ -20,7 +20,19 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { currentUser, signIn, role, roleLoading } = useAuth();
+  const { currentUser, signIn, role, roleLoading, loading: authLoading } = useAuth();
+
+  // Redirigir automáticamente si ya está autenticado
+  React.useEffect(() => {
+    if (!authLoading && currentUser && role) {
+      console.log('🔄 [Login] Usuario ya autenticado, redirigiendo...');
+      if (role === 'coordinador') {
+        navigate('/coordinador/dashboard', { replace: true });
+      } else if (role === 'estudiante') {
+        navigate('/estudiante/dashboard', { replace: true });
+      }
+    }
+  }, [authLoading, currentUser, role, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +40,16 @@ const Login: React.FC = () => {
     setError('');
 
     try {
+      console.log('🔐 [Login] Iniciando sesión...');
       const { data, error } = await signIn({ email, password });
+      
       if (error) {
+        console.error('❌ [Login] Error de autenticación:', error);
         setError(error.message);
         return;
       }
+
+      console.log('✅ [Login] Autenticación exitosa:', data?.user?.email);
 
       // Prefer the user returned by signIn, fall back to currentUser
       const signedUser = data?.user ?? currentUser;
@@ -41,9 +58,17 @@ const Login: React.FC = () => {
       const waitForRoleResolution = () => new Promise<void>(resolve => {
         const maxMs = 5000;
         const start = Date.now();
+        console.log('⏳ [Login] Esperando resolución de rol...');
+        
         const check = () => {
-          if (!roleLoading) return resolve();
-          if (Date.now() - start >= maxMs) return resolve();
+          if (!roleLoading) {
+            console.log('✅ [Login] Rol cargado');
+            return resolve();
+          }
+          if (Date.now() - start >= maxMs) {
+            console.warn('⚠️ [Login] Timeout esperando rol');
+            return resolve();
+          }
           setTimeout(check, 100);
         };
         check();
@@ -51,20 +76,47 @@ const Login: React.FC = () => {
 
       await waitForRoleResolution();
 
+      // Esperar un tick adicional para asegurar que AuthProvider actualizó el estado
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       const resolvedRole = role ?? (signedUser as any)?.role;
-      console.log('Role resolved:', resolvedRole);
+      console.log('👤 [Login] Rol resuelto:', resolvedRole);
+      
       if (resolvedRole === 'coordinador') {
-        navigate('/coordinador/dashboard');
+        console.log('🎯 [Login] Navegando a dashboard coordinador');
+        navigate('/coordinador/dashboard', { replace: true });
+      } else if (resolvedRole === 'estudiante') {
+        console.log('🎯 [Login] Navegando a dashboard estudiante');
+        navigate('/estudiante/dashboard', { replace: true });
       } else {
-        navigate('/estudiante/dashboard');
+        console.warn('⚠️ [Login] Rol no reconocido, navegando por defecto');
+        navigate('/login', { replace: true });
       }
     } catch (error) {
+      console.error('❌ [Login] Error inesperado:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el login';
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  // Mostrar loading mientras verifica si ya hay sesión
+  if (authLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box
