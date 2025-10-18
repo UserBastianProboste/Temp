@@ -1,117 +1,110 @@
-import type { AuthProviderProps } from "../types/auth.types"
-import { useEffect, useState } from "react"
-import { AuthContext } from "../contexts/AuthContext"
-import { supabase } from "../services/supabaseClient"
-import type { Session, User } from "@supabase/supabase-js"
-
+import type { AuthProviderProps } from "../types/auth.types";
+import { useEffect, useState, useMemo } from "react";
+import { AuthContext } from "../contexts/AuthContext";
+import { supabase } from "../services/supabaseClient";
+import type { Session, User } from "@supabase/supabase-js";
 
 const normalizeRole = (raw?: string | null): 'estudiante' | 'coordinador' | null => {
-  if (!raw) return null
-  const lowered = raw.toLowerCase()
-  if (lowered === 'estudiante' || lowered === 'student') return 'estudiante'
-  if (lowered === 'coordinador' || lowered === 'coordinator') return 'coordinador'
-  return null
-}
+  if (!raw) return null;
+  const s = raw.toLowerCase();
+  if (s === 'estudiante' || s === 'student') return 'estudiante';
+  if (s === 'coordinador' || s === 'coordinator') return 'coordinador';
+  return null;
+};
+const extractRole = (user: User | null) =>
+    !user ? null :
+        normalizeRole((user as any)?.role) ??
+        normalizeRole(user.app_metadata?.role as any) ??
+        normalizeRole(user.user_metadata?.role as any);
 
-const extractRole = (user: User | null): 'estudiante' | 'coordinador' | null => {
-  if (!user) return null
-  const claimRole = (user as any)?.role as string | undefined
-  return (
-    normalizeRole(claimRole)
-    ?? normalizeRole(user.app_metadata?.role as string | undefined)
-    ?? normalizeRole(user.user_metadata?.role as string | undefined)
-  )
-}
+type SignUpArgs = { email: string; password: string; options?: { emailRedirectTo?: string } };
+type SignInArgs = { email: string; password: string };
 
-export const AuthProvider = ({children}: AuthProviderProps) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [currentSession, setCurrentSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [role, setRole] = useState<string | null>(null)
-  const [roleLoading, setRoleLoading] = useState(false)
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(false);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     const handleSession = (session: Session | null) => {
       if (!mounted) return;
-
       const user = session?.user ?? null;
-      let extractedRole = extractRole(user);
 
-      // ✅ Extraer rol del JWT si existe
-      if (session && user) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          const [, payloadB64] = session.access_token.split('.')
-          if (payloadB64) {
-            const payloadJson = JSON.parse(atob(payloadB64)) as Record<string, unknown>
-            const claimRole = typeof payloadJson.app_role === 'string'
-              ? payloadJson.app_role
-              : typeof payloadJson.role === 'string'
-                ? payloadJson.role
-                : undefined
-            if (claimRole) {
-              (user as any).role = claimRole
-              extractedRole = normalizeRole(claimRole);
+      // intenta leer rol del JWT
+      let r = extractRole(user);
+      try {
+        if (session?.access_token && user) {
+          const [, b64] = session.access_token.split(".");
+          if (b64) {
+            const p = JSON.parse(atob(b64));
+            const claim = (p.app_role as string) || (p.role as string);
+            if (claim) {
+              (user as any).role = claim;
+              r = normalizeRole(claim);
             }
           }
-        } catch (error) {
-          // Ignorar errores silenciosamente
         }
-      }
+      } catch {}
 
-
-      if (!mounted) return
-
-
-      setCurrentSession(session); 
-      setCurrentUser(user)
-      setRoleLoading(true)
-      setRole(extractedRole) 
-      setRoleLoading(false)
-      setLoading(false) 
-    }
+      setCurrentSession(session);
+      setCurrentUser(user);
+      setRoleLoading(true);
+      setRole(r);
+      setRoleLoading(false);
+      setLoading(false);
+    };
 
     (async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Error obteniendo sesión:', error);
-        }
+      const { data } = await supabase.auth.getSession();
+      handleSession(data.session ?? null);
+    })();
 
-        handleSession(session ?? null)
-      } catch (error) {
-        console.error('Error crítico en getSession:', error)
-        setLoading(false)
-      }
-    })()
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => handleSession(s ?? null));
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      handleSession(session ?? null)
-    })
+  // ---- API estricta de password (sin OTP/magic) ----
+  const signUp = async ({ email, password, options }: SignUpArgs) => {
+    if (!email || !password) throw new Error("email y password son obligatorios");
+    return await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: options?.emailRedirectTo ?? `${window.location.origin}/auth/callback`,
+      },
+    });
+  };
 
-    return () => {
-      mounted = false
-      subscription?.unsubscribe()
-    }
-  }, [])
+  const signIn = async ({ email, password }: SignInArgs) => {
+    if (!email || !password) throw new Error("email y password son obligatorios");
+    return await supabase.auth.signInWithPassword({ email, password });
+  };
 
-  return (
-    <AuthContext.Provider value={{
-        currentUser,
-        currentSession,
-        loading,
-        role,
-        roleLoading,
-        isAuthenticated: !!currentUser,
-        signUp: async (credentials) => supabase.auth.signUp(credentials),
-        signIn: async (credentials) => supabase.auth.signInWithPassword(credentials),
-        signOut: async () => supabase.auth.signOut(),
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
-}
+  const sendPasswordReset = async (email: string) => {
+    if (!email) throw new Error("email requerido");
+    return await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+  };
+
+  const exchangeCode = async (code: string) => supabase.auth.exchangeCodeForSession(code);
+  const updatePassword = async (password: string) => supabase.auth.updateUser({ password });
+  const signOut = async () => supabase.auth.signOut();
+
+  const ctx = useMemo(() => ({
+    currentUser,
+    currentSession,
+    loading,
+    role,
+    roleLoading,
+    isAuthenticated: !!currentUser,
+    signUp, signIn, signOut,
+    sendPasswordReset, exchangeCode, updatePassword,
+  }), [currentUser, currentSession, loading, role, roleLoading]);
+
+  return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
+};

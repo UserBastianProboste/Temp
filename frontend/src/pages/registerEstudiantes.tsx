@@ -247,113 +247,82 @@ const RegisterEstudiantes: React.FC = () => {
       setActiveStep(1);
       return;
     }
-
     if (!isStepThreeComplete) {
       setError('Selecciona tu carrera y especifica la sede antes de finalizar el registro.');
       setActiveStep(2);
       return;
     }
-
     if (formData.password.trim().length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres');
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
 
     setLoading(true);
-
     try {
-      console.log('=== INICIANDO REGISTRO ===');
-      console.log('Datos del formulario:', formData);
-
       const email = formData.email.trim();
       const password = formData.password;
-      const fullName = `${formData.nombre} ${formData.apellido}`.trim();
-      const selectedCarrera = formData.carrera.trim();
-      const selectedSede = formData.sede.trim();
-      const options = {
-        data: {
-          full_name: fullName,
-          role: 'estudiante',
-          rut: formData.rut.trim(),
+      const fullName = `${formData.nombre.trim()} ${formData.apellido.trim()}`.trim();
+
+      // 1) Alta de usuario con password-flow
+      const { data: signUpData, error: signUpError } = await signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: fullName,
+            role: 'estudiante',
+            rut: formData.rut.trim(),
+          },
         },
-      } as const;
-
-      let signUpData: Awaited<ReturnType<typeof signUp>>['data'] | null = null;
-      let signUpError: Awaited<ReturnType<typeof signUp>>['error'] | null = null;
-
-      try {
-        const result = await signUp({ email, password, options });
-        signUpData = result.data;
-        signUpError = result.error;
-        console.log('Resultado Auth:', result);
-      } catch (signUpException) {
-        console.error('signUp threw:', signUpException);
-        try {
-          await debugSession();
-        } catch (sessionError) {
-          console.debug('debugSession falló', sessionError);
-        }
-        setError('Error al registrar usuario. Revise la consola para más detalles.');
-        return;
-      }
-
+      });
       if (signUpError) {
-        console.error('Error en autenticación:', signUpError);
-        try {
-          await debugSession();
-        } catch (sessionError) {
-          console.debug('debugSession falló', sessionError);
-        }
-        const message = signUpError.message || String(signUpError);
-        setError(message);
+        setError(signUpError.message || 'Error al registrar usuario');
         return;
       }
 
-      const userId = signUpData?.user?.id;
-      if (!userId) {
-        console.warn('signUp no devolvió usuario; puede requerir confirmación por correo.');
-        setError('Registro iniciado. Revisa tu correo para confirmar tu cuenta antes de ingresar.');
-        navigate('/login');
-        return;
-      }
-
-      try {
-        const { error: estudianteError } = await estudianteService.create({
-          user_id: userId,
-          nombre: formData.nombre.trim(),
-          apellido: formData.apellido.trim(),
-          email,
-          telefono: formData.telefono.trim(),
-          carrera: selectedCarrera || null,
-          sede: selectedSede || null,
-        });
-
-        if (estudianteError) {
-          console.error('Error al crear perfil de estudiante:', estudianteError);
-          setError(`Error al crear el perfil de estudiante: ${estudianteError.message}`);
+      // 2) Garantizar sesión para cumplir RLS (si hay confirmación por email no habrá sesión aún)
+      let { data: sess } = await supabase.auth.getSession();
+      if (!sess?.session) {
+        const { error: signinError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signinError) {
+          setError('Registro iniciado. Revisa tu correo para confirmar tu cuenta antes de ingresar.');
+          navigate('/login');
           return;
         }
-      } catch (studentException) {
-        console.error('Excepción al crear estudiante:', studentException);
-        setError('Error inesperado al crear el perfil de estudiante.');
+        ({ data: sess } = await supabase.auth.getSession());
+      }
+      if (!sess?.session) {
+        setError('No hay sesión activa tras el registro.');
         return;
       }
 
-      console.log('=== REGISTRO EXITOSO ===');
+      // 3) Insert en estudiantes SIN user_id (DB: DEFAULT auth.uid())
+      const { error: estudianteError } = await estudianteService.create({
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        email,
+        telefono: formData.telefono.trim(),
+        carrera: formData.carrera.trim() || null,
+        sede: formData.sede.trim() || null,
+      });
+      if (estudianteError) {
+        setError(`Error al crear el perfil de estudiante: ${estudianteError.message}`);
+        return;
+      }
+
       navigate('/login');
-    } catch (error) {
-      console.error('Error inesperado durante el registro:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error inesperado durante el registro';
-      setError(errorMessage);
+    } catch (err: any) {
+      setError(err?.message || 'Error inesperado durante el registro');
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

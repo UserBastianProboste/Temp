@@ -21,6 +21,7 @@ import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
 import CoordinadorEmpresas from './pages/coordinadorEmpresas';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
+import AuthCallback from "./pages/AuthCallback";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
               path="/register-estudiantes"
               element={<RegisterEstudiantes />}
             />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/evaluacion-supervisor/:token" element={<EvaluacionSupervisorPublica />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
