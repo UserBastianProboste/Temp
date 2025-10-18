@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -25,7 +25,7 @@ import School from '@mui/icons-material/School';
 import Verified from '@mui/icons-material/Verified';
 import { useAuth } from '../hooks/useAuth';
 import { estudianteService } from '../services/estudianteService';
-import { debugSession } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 
 interface RegisterFormData {
   email: string;
@@ -64,15 +64,20 @@ const RegisterEstudiantes: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [activeStep, setActiveStep] = useState(0);
   const [emailPhase, setEmailPhase] = useState<'input' | 'code' | 'credentials'>('input');
   const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(''));
   const [timer, setTimer] = useState(30);
   const [timerActive, setTimerActive] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { sendEmailOtp, verifyEmailOtp, completeUserProfile, signOut } = useAuth();
 
   const steps = ['Identidad', 'Seguridad', 'Programa'];
 
@@ -120,6 +125,11 @@ const RegisterEstudiantes: React.FC = () => {
   const formattedTimer = `00:${String(timer).padStart(2, '0')}`;
 
   useEffect(() => {
+    const joined = codeDigits.join('');
+    setFormData(prev => (prev.verificationCode === joined ? prev : { ...prev, verificationCode: joined }));
+  }, [codeDigits]);
+
+  useEffect(() => {
     if (emailPhase === 'code') {
       codeRefs.current[0]?.focus();
     }
@@ -130,6 +140,69 @@ const RegisterEstudiantes: React.FC = () => {
       passwordRef.current?.focus();
     }
   }, [emailPhase]);
+
+  useEffect(() => {
+    if (emailPhase !== 'code') {
+      return;
+    }
+
+    if (verifyingOtp || emailVerified) {
+      return;
+    }
+
+    if (codeDigits.some(digit => !digit)) {
+      return;
+    }
+
+    let cancelled = false;
+    const verify = async () => {
+      const token = codeDigits.join('');
+      const emailToVerify = formData.email.trim();
+      if (!emailToVerify) {
+        setError('Ingresa un correo válido antes de verificar.');
+        return;
+      }
+
+      setVerifyingOtp(true);
+      setError('');
+      setSuccessMessage('');
+      try {
+        const { error: otpError } = await verifyEmailOtp({ email: emailToVerify, token });
+        if (cancelled) {
+          return;
+        }
+        if (otpError) {
+          setError(otpError.message || 'El código es inválido o expiró. Intenta nuevamente.');
+          setCodeDigits(Array(codeDigits.length).fill(''));
+          setTimeout(() => codeRefs.current[0]?.focus(), 0);
+          return;
+        }
+
+        setEmailPhase('credentials');
+        setTimerActive(false);
+        setEmailVerified(true);
+        setVerifiedEmail(emailToVerify);
+        setSuccessMessage('Correo verificado correctamente. Crea tu contraseña para continuar.');
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Error al verificar el código.';
+          setError(message);
+          setCodeDigits(Array(codeDigits.length).fill(''));
+          setTimeout(() => codeRefs.current[0]?.focus(), 0);
+        }
+      } finally {
+        if (!cancelled) {
+          setVerifyingOtp(false);
+        }
+      }
+    };
+
+    void verify();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [codeDigits, emailPhase, emailVerified, verifyEmailOtp, formData.email, verifyingOtp]);
 
   const handleNext = () => {
     if (activeStep === 0 && !isStepOneComplete) {
@@ -159,65 +232,99 @@ const RegisterEstudiantes: React.FC = () => {
     }));
   };
 
-  const handleSendCode = () => {
-    if (!formData.email.trim()) {
+  const handleSendCode = useCallback(async () => {
+    const emailToSend = formData.email.trim();
+    if (!emailToSend) {
       setError('Ingresa un correo electrónico válido antes de enviar el código.');
       return;
     }
 
     setError('');
-    setEmailPhase('code');
-    setTimer(30);
-    setTimerActive(true);
-    setCodeDigits(Array(6).fill(''));
-    setFormData(prev => ({
-      ...prev,
-      verificationCode: '',
-    }));
-  };
+    setSuccessMessage('');
+    setEmailVerified(false);
+    setVerifiedEmail(null);
+    setSendingOtp(true);
+    try {
+      const { error: otpError } = await sendEmailOtp(emailToSend, { shouldCreateUser: true });
+      if (otpError) {
+        setError(otpError.message || 'No pudimos enviar el código. Inténtalo nuevamente en unos minutos.');
+        return;
+      }
 
-  const handleResendCode = () => {
+      setEmailPhase('code');
+      setTimer(30);
+      setTimerActive(true);
+      setCodeDigits(Array(codeDigits.length).fill(''));
+      setFormData(prev => ({
+        ...prev,
+        verificationCode: '',
+      }));
+      setSuccessMessage('Te enviamos un código de verificación. Revisa tu bandeja de entrada.');
+      setTimeout(() => {
+        codeRefs.current[0]?.focus();
+      }, 0);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error inesperado al enviar el código.';
+      setError(message);
+    } finally {
+      setSendingOtp(false);
+    }
+  }, [codeDigits.length, formData.email, sendEmailOtp]);
+
+  const handleResendCode = useCallback(async () => {
+    const emailToSend = formData.email.trim();
+    if (!emailToSend) {
+      setError('Ingresa un correo electrónico válido antes de reenviar el código.');
+      return;
+    }
+
     setError('');
-    setEmailPhase('code');
-    setTimer(30);
-    setTimerActive(true);
-    setCodeDigits(Array(6).fill(''));
-    setFormData(prev => ({
-      ...prev,
-      verificationCode: '',
-    }));
-    setTimeout(() => {
-      codeRefs.current[0]?.focus();
-    }, 0);
-  };
+    setSuccessMessage('');
+    setEmailVerified(false);
+    setVerifiedEmail(null);
+    setSendingOtp(true);
+    try {
+      const { error: otpError } = await sendEmailOtp(emailToSend, { shouldCreateUser: false });
+      if (otpError) {
+        setError(otpError.message || 'No pudimos reenviar el código. Inténtalo nuevamente en unos minutos.');
+        return;
+      }
+
+      setEmailPhase('code');
+      setTimer(30);
+      setTimerActive(true);
+      setCodeDigits(Array(codeDigits.length).fill(''));
+      setFormData(prev => ({
+        ...prev,
+        verificationCode: '',
+      }));
+      setSuccessMessage('Enviamos un nuevo código de verificación a tu correo.');
+      setTimeout(() => {
+        codeRefs.current[0]?.focus();
+      }, 0);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error inesperado al reenviar el código.';
+      setError(message);
+    } finally {
+      setSendingOtp(false);
+    }
+  }, [codeDigits.length, formData.email, sendEmailOtp]);
 
   const handleUseDifferentEmail = () => {
     setError('');
+    setSuccessMessage('');
     setEmailPhase('input');
     setTimerActive(false);
     setTimer(30);
-    setCodeDigits(Array(6).fill(''));
+    setCodeDigits(Array(codeDigits.length).fill(''));
+    setEmailVerified(false);
+    setVerifiedEmail(null);
     setFormData(prev => ({
       ...prev,
       verificationCode: '',
       password: '',
       confirmPassword: '',
     }));
-  };
-
-  const commitCodeDigits = (nextDigits: string[]) => {
-    const joined = nextDigits.join('');
-    setFormData(formPrev => ({
-      ...formPrev,
-      verificationCode: joined,
-    }));
-
-    if (joined.length === nextDigits.length && !nextDigits.includes('')) {
-      setEmailPhase('credentials');
-      setTimerActive(false);
-    }
-
-    return nextDigits;
   };
 
   const handleCodeDigitChange = (index: number, value: string) => {
@@ -235,13 +342,19 @@ const RegisterEstudiantes: React.FC = () => {
         codeRefs.current[index + 1]?.focus();
       }
 
-      return commitCodeDigits(next);
+      return next;
     });
   };
 
   const submitRegistration = async () => {
     setError('');
+    setSuccessMessage('');
 
+    if (!emailVerified || emailPhase !== 'credentials') {
+      setError('Debes verificar tu correo antes de finalizar el registro.');
+      setActiveStep(1);
+      return;
+    }
     if (!isStepTwoComplete) {
       setError('Revisa los datos de contacto y tus credenciales antes de registrar.');
       setActiveStep(1);
@@ -263,49 +376,47 @@ const RegisterEstudiantes: React.FC = () => {
 
     setLoading(true);
     try {
-      const email = formData.email.trim();
+      const email = (verifiedEmail ?? formData.email).trim();
       const password = formData.password;
       const fullName = `${formData.nombre.trim()} ${formData.apellido.trim()}`.trim();
 
-      // 1) Alta de usuario con password-flow
-      const { data: signUpData, error: signUpError } = await signUp({
-        email,
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        setError(sessionError.message || 'No pudimos obtener la sesión actual.');
+        return;
+      }
+      const session = sessionData?.session;
+      const user = session?.user;
+      if (!session || !user) {
+        setError('Tu sesión de verificación expiró. Solicita un nuevo código e inténtalo nuevamente.');
+        setEmailPhase('input');
+        setEmailVerified(false);
+        setVerifiedEmail(null);
+        setTimerActive(false);
+        setTimer(30);
+        setCodeDigits(Array(codeDigits.length).fill(''));
+        return;
+      }
+
+      const { error: completeError } = await completeUserProfile({
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: fullName,
-            role: 'estudiante',
-            rut: formData.rut.trim(),
-          },
+        data: {
+          full_name: fullName,
+          role: 'estudiante',
+          rut: formData.rut.trim(),
+          telefono: formData.telefono.trim() || undefined,
         },
       });
-      if (signUpError) {
-        setError(signUpError.message || 'Error al registrar usuario');
+      if (completeError) {
+        setError(completeError.message || 'No pudimos actualizar tus credenciales.');
         return;
       }
 
-      // 2) Garantizar sesión para cumplir RLS (si hay confirmación por email no habrá sesión aún)
-      let { data: sess } = await supabase.auth.getSession();
-      if (!sess?.session) {
-        const { error: signinError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signinError) {
-          setError('Registro iniciado. Revisa tu correo para confirmar tu cuenta antes de ingresar.');
-          navigate('/login');
-          return;
-        }
-        ({ data: sess } = await supabase.auth.getSession());
-      }
-      if (!sess?.session) {
-        setError('No hay sesión activa tras el registro.');
-        return;
-      }
-
-      // 3) Insert en estudiantes SIN user_id (DB: DEFAULT auth.uid())
       const { error: estudianteError } = await estudianteService.create({
+        user_id: user.id,
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
-        email,
+        email: user.email ?? email,
         telefono: formData.telefono.trim(),
         carrera: formData.carrera.trim() || null,
         sede: formData.sede.trim() || null,
@@ -313,6 +424,11 @@ const RegisterEstudiantes: React.FC = () => {
       if (estudianteError) {
         setError(`Error al crear el perfil de estudiante: ${estudianteError.message}`);
         return;
+      }
+
+      const { error: signOutError } = await signOut();
+      if (signOutError) {
+        console.error('Error al cerrar sesión tras el registro:', signOutError);
       }
 
       navigate('/login');
@@ -383,6 +499,11 @@ const RegisterEstudiantes: React.FC = () => {
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
               {error}
+            </Alert>
+          )}
+          {successMessage && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              {successMessage}
             </Alert>
           )}
 
@@ -509,8 +630,9 @@ const RegisterEstudiantes: React.FC = () => {
                           onClick={handleSendCode}
                           type="button"
                           sx={{ minWidth: 180 }}
+                          disabled={sendingOtp}
                         >
-                          Enviar código
+                          {sendingOtp ? 'Enviando…' : 'Enviar código'}
                         </Button>
                       </Box>
                     </Stack>
@@ -527,13 +649,21 @@ const RegisterEstudiantes: React.FC = () => {
                           ? 'Ya validamos tu correo. Ahora crea una contraseña segura.'
                           : 'Revisa tu bandeja de entrada. Ingresa el código de 6 dígitos para continuar con la configuración de tu contraseña.'}
                       </Typography>
-                      {formData.email && (
+                      {(verifiedEmail ?? formData.email) && (
                         <Typography variant="body2" color="text.secondary">
                           Enviado a{' '}
                           <Box component="span" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                            {formData.email}
+                            {verifiedEmail ?? formData.email}
                           </Box>
                         </Typography>
+                      )}
+                      {emailPhase === 'code' && verifyingOtp && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <CircularProgress size={16} />
+                          <Typography variant="caption" color="text.secondary">
+                            Verificando código…
+                          </Typography>
+                        </Stack>
                       )}
                       {emailPhase === 'code' && (
                         <Typography
@@ -627,7 +757,7 @@ const RegisterEstudiantes: React.FC = () => {
                             maxLength={1}
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            disabled={timerExpired}
+                            disabled={timerExpired || verifyingOtp}
                             sx={{
                               width: { xs: 48, sm: 56 },
                               height: { xs: 56, sm: 64 },
@@ -666,6 +796,7 @@ const RegisterEstudiantes: React.FC = () => {
                             },
                             animation: 'pulseAccent 1.6s ease-in-out infinite',
                           }}
+                          disabled={sendingOtp || verifyingOtp}
                         >
                           Reenviar código
                         </Button>
