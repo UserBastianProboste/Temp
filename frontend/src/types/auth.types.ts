@@ -56,7 +56,7 @@ export interface AuthContextType {
         error: AuthError | null
     }>
     signOut: () => Promise<{ error: AuthError | null }>
-    sendPasswordReset: (email: string) => Promise<{ data: {} | null; error: AuthError | null }>
+    sendPasswordReset: (email: string) => Promise<{ data: Record<string, never> | null; error: AuthError | null }>
     exchangeCode: (code: string) => Promise<AuthResponse>
     updatePassword: (password: string) => Promise<UserResponse>
     sendEmailOtp: (
