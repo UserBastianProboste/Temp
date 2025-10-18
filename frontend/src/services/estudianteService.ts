@@ -13,13 +13,14 @@ export const estudianteService = {
 
     const response = await supabase
       .from('estudiantes')
-      .insert([{
+      .insert([{ 
         user_id: estudiante.user_id,
         nombre: estudiante.nombre,
         apellido: estudiante.apellido,
         email: estudiante.email,
         telefono: estudiante.telefono || null,
         carrera: estudiante.carrera || null,
+        sede: estudiante.sede || null,
       }])
       .select('*')
       .single();

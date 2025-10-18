@@ -25,7 +25,7 @@ import School from '@mui/icons-material/School';
 import Verified from '@mui/icons-material/Verified';
 import { useAuth } from '../hooks/useAuth';
 import { estudianteService } from '../services/estudianteService';
-import { debugSession } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 
 interface RegisterFormData {
   email: string;
@@ -67,31 +67,34 @@ const RegisterEstudiantes: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [emailPhase, setEmailPhase] = useState<'input' | 'code' | 'credentials'>('input');
   const [codeDigits, setCodeDigits] = useState<string[]>(() => Array(6).fill(''));
-  const [timer, setTimer] = useState(30);
+  const OTP_EXPIRATION = 60;
+  const [timer, setTimer] = useState(OTP_EXPIRATION);
   const [timerActive, setTimerActive] = useState(false);
+  const [codeRequestLoading, setCodeRequestLoading] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { sendEmailOtp, verifyEmailOtp, updateUserProfile, signOut } = useAuth();
 
   const steps = ['Identidad', 'Seguridad', 'Programa'];
 
   const isStepOneComplete =
     Boolean(formData.nombre.trim() && formData.apellido.trim() && formData.rut.trim());
 
-  const { email, verificationCode, password, confirmPassword, carrera, sede } = formData;
+  const { email, password, confirmPassword, carrera, sede } = formData;
 
   const isStepTwoComplete = useMemo(
     () =>
       Boolean(
-        emailPhase === 'credentials' &&
+        otpVerified &&
           email.trim() &&
-          verificationCode.length === 6 &&
           password.length >= 8 &&
           confirmPassword &&
           password === confirmPassword,
       ),
-    [confirmPassword, email, emailPhase, password, verificationCode],
+    [confirmPassword, email, otpVerified, password],
   );
 
   const isStepThreeComplete = useMemo(
@@ -159,50 +162,138 @@ const RegisterEstudiantes: React.FC = () => {
     }));
   };
 
-  const handleSendCode = () => {
-    if (!formData.email.trim()) {
+  const handleSendCode = async () => {
+    const trimmedEmail = formData.email.trim();
+    if (!trimmedEmail) {
       setError('Ingresa un correo electrónico válido antes de enviar el código.');
       return;
     }
 
+    setCodeRequestLoading(true);
     setError('');
-    setEmailPhase('code');
-    setTimer(30);
-    setTimerActive(true);
-    setCodeDigits(Array(6).fill(''));
-    setFormData(prev => ({
-      ...prev,
-      verificationCode: '',
-    }));
+    setOtpVerified(false);
+
+    try {
+      const { error: otpError } = await sendEmailOtp(trimmedEmail);
+      if (otpError) {
+        setError(otpError.message || 'No pudimos enviar el código. Intenta nuevamente.');
+        return;
+      }
+
+      setEmailPhase('code');
+      setTimer(OTP_EXPIRATION);
+      setTimerActive(true);
+      setCodeDigits(Array(6).fill(''));
+      setFormData(prev => ({
+        ...prev,
+        email: trimmedEmail,
+        verificationCode: '',
+      }));
+
+      setTimeout(() => {
+        codeRefs.current[0]?.focus();
+      }, 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error enviando el código.');
+    } finally {
+      setCodeRequestLoading(false);
+    }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
+    const trimmedEmail = formData.email.trim();
+    if (!trimmedEmail) {
+      return;
+    }
+
+    setCodeRequestLoading(true);
     setError('');
-    setEmailPhase('code');
-    setTimer(30);
-    setTimerActive(true);
-    setCodeDigits(Array(6).fill(''));
-    setFormData(prev => ({
-      ...prev,
-      verificationCode: '',
-    }));
-    setTimeout(() => {
-      codeRefs.current[0]?.focus();
-    }, 0);
+    setOtpVerified(false);
+
+    try {
+      const { error: otpError } = await sendEmailOtp(trimmedEmail);
+      if (otpError) {
+        setError(otpError.message || 'No pudimos reenviar el código. Intenta nuevamente.');
+        return;
+      }
+
+      setEmailPhase('code');
+      setTimer(OTP_EXPIRATION);
+      setTimerActive(true);
+      setCodeDigits(Array(6).fill(''));
+      setFormData(prev => ({
+        ...prev,
+        email: trimmedEmail,
+        verificationCode: '',
+      }));
+
+      setTimeout(() => {
+        codeRefs.current[0]?.focus();
+      }, 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error reenviando el código.');
+    } finally {
+      setCodeRequestLoading(false);
+    }
   };
 
   const handleUseDifferentEmail = () => {
     setError('');
     setEmailPhase('input');
     setTimerActive(false);
-    setTimer(30);
+    setTimer(OTP_EXPIRATION);
     setCodeDigits(Array(6).fill(''));
+    setOtpVerified(false);
+    setVerifyingCode(false);
     setFormData(prev => ({
       ...prev,
       verificationCode: '',
       password: '',
       confirmPassword: '',
     }));
+  };
+
+  const verifyCodeWithSupabase = async (code: string) => {
+    if (verifyingCode) {
+      return;
+    }
+
+    const trimmedEmail = formData.email.trim();
+    if (!trimmedEmail) {
+      setError('Ingresa un correo electrónico válido antes de verificar el código.');
+      return;
+    }
+
+    setVerifyingCode(true);
+    setError('');
+
+    try {
+      const { error: verificationError } = await verifyEmailOtp({ email: trimmedEmail, token: code });
+      if (verificationError) {
+        setError(verificationError.message || 'Código inválido o expirado. Solicita uno nuevo.');
+        setOtpVerified(false);
+        setCodeDigits(Array(6).fill(''));
+        setFormData(prev => ({
+          ...prev,
+          verificationCode: '',
+        }));
+        setTimeout(() => codeRefs.current[0]?.focus(), 0);
+        return;
+      }
+
+      setOtpVerified(true);
+      setEmailPhase('credentials');
+      setTimerActive(false);
+      setFormData(prev => ({
+        ...prev,
+        verificationCode: code,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos validar el código.');
+      setOtpVerified(false);
+    } finally {
+      setVerifyingCode(false);
+    }
   };
 
   const commitCodeDigits = (nextDigits: string[]) => {
@@ -213,8 +304,7 @@ const RegisterEstudiantes: React.FC = () => {
     }));
 
     if (joined.length === nextDigits.length && !nextDigits.includes('')) {
-      setEmailPhase('credentials');
-      setTimerActive(false);
+      void verifyCodeWithSupabase(joined);
     }
 
     return nextDigits;
@@ -228,6 +318,9 @@ const RegisterEstudiantes: React.FC = () => {
     const digit = value.replace(/\D/u, '').slice(-1);
 
     setCodeDigits(prev => {
+      if (verifyingCode) {
+        return prev;
+      }
       const next = [...prev];
       next[index] = digit;
 
@@ -266,53 +359,61 @@ const RegisterEstudiantes: React.FC = () => {
       const email = formData.email.trim();
       const password = formData.password;
       const fullName = `${formData.nombre.trim()} ${formData.apellido.trim()}`.trim();
+      const metadata: Record<string, any> = {
+        full_name: fullName,
+        role: 'estudiante',
+        rut: formData.rut.trim(),
+      };
 
-      // 1) Alta de usuario con password-flow
-      const { data: signUpData, error: signUpError } = await signUp({
-        email,
+      const telefono = formData.telefono.trim();
+      const carreraSeleccionada = formData.carrera.trim();
+      const sedeSeleccionada = formData.sede.trim();
+
+      if (telefono) metadata.telefono = telefono;
+      if (carreraSeleccionada) metadata.carrera = carreraSeleccionada;
+      if (sedeSeleccionada) metadata.sede = sedeSeleccionada;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+
+      if (!session || !session.user) {
+        setError('Debes validar tu correo ingresando el código que enviamos.');
+        setActiveStep(1);
+        return;
+      }
+
+      if (!session.user.email || session.user.email.toLowerCase() !== email.toLowerCase()) {
+        setError('El correo verificado no coincide con el que estás registrando. Intenta nuevamente.');
+        setActiveStep(1);
+        return;
+      }
+
+      const { error: updateError } = await updateUserProfile({
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: fullName,
-            role: 'estudiante',
-            rut: formData.rut.trim(),
-          },
-        },
+        data: metadata,
       });
-      if (signUpError) {
-        setError(signUpError.message || 'Error al registrar usuario');
+      if (updateError) {
+        setError(updateError.message || 'No pudimos completar el registro. Intenta nuevamente.');
         return;
       }
 
-      // 2) Garantizar sesión para cumplir RLS (si hay confirmación por email no habrá sesión aún)
-      let { data: sess } = await supabase.auth.getSession();
-      if (!sess?.session) {
-        const { error: signinError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signinError) {
-          setError('Registro iniciado. Revisa tu correo para confirmar tu cuenta antes de ingresar.');
-          navigate('/login');
-          return;
-        }
-        ({ data: sess } = await supabase.auth.getSession());
-      }
-      if (!sess?.session) {
-        setError('No hay sesión activa tras el registro.');
-        return;
-      }
-
-      // 3) Insert en estudiantes SIN user_id (DB: DEFAULT auth.uid())
       const { error: estudianteError } = await estudianteService.create({
+        user_id: session.user.id,
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
         email,
-        telefono: formData.telefono.trim(),
-        carrera: formData.carrera.trim() || null,
-        sede: formData.sede.trim() || null,
+        telefono: telefono || null,
+        carrera: carreraSeleccionada || null,
+        sede: sedeSeleccionada || null,
       });
       if (estudianteError) {
         setError(`Error al crear el perfil de estudiante: ${estudianteError.message}`);
         return;
+      }
+
+      const { error: signOutError } = await signOut();
+      if (signOutError) {
+        console.warn('Error al cerrar sesión tras el registro:', signOutError.message);
       }
 
       navigate('/login');
@@ -509,8 +610,9 @@ const RegisterEstudiantes: React.FC = () => {
                           onClick={handleSendCode}
                           type="button"
                           sx={{ minWidth: 180 }}
+                          disabled={codeRequestLoading}
                         >
-                          Enviar código
+                          {codeRequestLoading ? 'Enviando...' : 'Enviar código'}
                         </Button>
                       </Box>
                     </Stack>
@@ -627,7 +729,7 @@ const RegisterEstudiantes: React.FC = () => {
                             maxLength={1}
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            disabled={timerExpired}
+                            disabled={timerExpired || verifyingCode}
                             sx={{
                               width: { xs: 48, sm: 56 },
                               height: { xs: 56, sm: 64 },
@@ -651,6 +753,15 @@ const RegisterEstudiantes: React.FC = () => {
                           />
                         ))}
                       </Box>
+                      {verifyingCode && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <CircularProgress size={18} />
+                          <Typography variant="caption" color="text.secondary">
+                            Validando código...
+                          </Typography>
+                        </Stack>
+                      )}
+
                       {timerExpired && (
                         <Button
                           variant="contained"
@@ -666,8 +777,9 @@ const RegisterEstudiantes: React.FC = () => {
                             },
                             animation: 'pulseAccent 1.6s ease-in-out infinite',
                           }}
+                          disabled={codeRequestLoading}
                         >
-                          Reenviar código
+                          {codeRequestLoading ? 'Reenviando...' : 'Reenviar código'}
                         </Button>
                       )}
                     </Stack>
