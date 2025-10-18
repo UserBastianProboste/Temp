@@ -22,6 +22,7 @@ import CoordinadorEmpresas from './pages/coordinadorEmpresas';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
+import ProfileSettings from './pages/ProfileSettings';
 
 function App() {
   return (
@@ -44,6 +45,8 @@ function App() {
 
             {/* Rutas protegidas por autenticación */}
             <Route path='/' element={<RouteGuard />}>
+
+              <Route path="perfil" element={<ProfileSettings />} />
 
               {/* Rutas para el rol de estudiante */}
               <Route path='/estudiante' element={<RouteGuard roleAllowed='estudiante' />}>
