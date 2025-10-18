@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -12,11 +12,6 @@ import {
 import { Lock as LockIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import {
-  RecoveryLinkError,
-  establishRecoverySession,
-  type RecoveryLinkTokens
-} from '../utils/establishRecoverySession';
 
 const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -27,93 +22,110 @@ const ResetPassword: React.FC = () => {
   const [linkValid, setLinkValid] = useState(false);
   const [checkingLink, setCheckingLink] = useState(true);
   const [searchParams] = useSearchParams();
-  const redirectTimeoutRef = useRef<number | null>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    return () => {
-      if (redirectTimeoutRef.current !== null) {
-        clearTimeout(redirectTimeoutRef.current);
-        redirectTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   // Extraer tokens (Supabase a veces los entrega en el hash #)
   useEffect(() => {
-    let isMounted = true;
-
-    const parseTokens = (): RecoveryLinkTokens => {
-      const currentUrl = new URL(window.location.href);
-      const hash = window.location.hash.startsWith('#')
-        ? window.location.hash.substring(1)
-        : window.location.hash;
-      const urlParams = currentUrl.searchParams;
-      const hashParams = new URLSearchParams(hash);
-
-      const getParam = (key: string): string | null => {
-        return (
-          urlParams.get(key) ??
-          hashParams.get(key) ??
-          searchParams.get(key)
-        );
-      };
-
-      return {
-        code: getParam('code') ?? undefined,
-        tokenHash: getParam('token_hash') ?? undefined,
-        otpToken: getParam('token') ?? undefined,
-        accessToken: getParam('access_token') ?? undefined,
-        refreshToken: getParam('refresh_token') ?? undefined,
-        type: getParam('type') ?? 'recovery',
-        email: getParam('email') ?? undefined,
-        cleanedUrl: `${currentUrl.origin}${currentUrl.pathname}`
-      };
-    };
-
     const verifyLink = async () => {
       setCheckingLink(true);
       setError('');
 
       try {
-        const tokens = parseTokens();
-        const session = await establishRecoverySession({
-          supabase,
-          tokens
-        });
+        const url = new URL(window.location.href);
+        const hash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const urlParams = url.searchParams;
+        const hashParams = new URLSearchParams(hash);
 
-        if (!session) {
-          throw new RecoveryLinkError('session_not_found', 'No se pudo establecer la sesión para restablecer la contraseña.');
+        const code = urlParams.get('code') || hashParams.get('code');
+        const tokenHash = urlParams.get('token_hash') || hashParams.get('token_hash');
+        const otpToken = urlParams.get('token') || hashParams.get('token');
+        const type = urlParams.get('type') || hashParams.get('type') || 'recovery';
+        const email = urlParams.get('email') || hashParams.get('email') || undefined;
+
+        let accessToken = urlParams.get('access_token') || hashParams.get('access_token') || searchParams.get('access_token');
+        let refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token') || searchParams.get('refresh_token');
+
+        const hasAuthParams = Boolean(
+          code || tokenHash || otpToken || accessToken || refreshToken
+        );
+
+        if (!hasAuthParams) {
+          throw new Error('Enlace inválido o expirado');
         }
 
-        if (!isMounted) return;
+        let valid = false;
 
-        window.history.replaceState({}, document.title, tokens.cleanedUrl);
+        try {
+          const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+          if (!error && data.session) {
+            valid = true;
+          }
+        } catch (getSessionError) {
+          console.debug('getSessionFromUrl error', getSessionError);
+        }
+
+        if (!valid && code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid && tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any,
+          });
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid && otpToken && email) {
+          const { error } = await supabase.auth.verifyOtp({
+            token: otpToken,
+            type: type as any,
+            email,
+          });
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid) {
+          if (accessToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            if (error) throw error;
+            valid = true;
+          }
+        }
+
+        if (!valid) {
+          throw new Error('Enlace inválido o expirado');
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('No se pudo establecer la sesión para restablecer la contraseña.');
+        }
+
+        const cleanUrl = `${url.origin}${url.pathname}`;
+        window.history.replaceState({}, document.title, cleanUrl);
+
         setLinkValid(true);
       } catch (err) {
         console.error(err);
-        if (!isMounted) return;
-
-        const message =
-          err instanceof RecoveryLinkError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Enlace inválido o expirado';
+        const message = err instanceof Error ? err.message : 'Enlace inválido o expirado';
         setError(message);
         setLinkValid(false);
       } finally {
-        if (isMounted) {
-          setCheckingLink(false);
-        }
+        setCheckingLink(false);
       }
     };
 
     void verifyLink();
-
-    return () => {
-      isMounted = false;
-    };
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,11 +157,7 @@ const ResetPassword: React.FC = () => {
         return;
       }
       setSuccess(true);
-      setPassword('');
-      setConfirmPassword('');
-      redirectTimeoutRef.current = window.setTimeout(() => {
-        navigate('/login');
-      }, 2500);
+      setTimeout(() => navigate('/login'), 2500);
     } catch (err) {
       console.error(err);
       setError('Error inesperado al actualizar contraseña');
