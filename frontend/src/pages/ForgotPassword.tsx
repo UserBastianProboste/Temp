@@ -36,7 +36,7 @@ const ForgotPassword: React.FC = () => {
             });
 
             if (error) {
-                setError('Error al enviar email:' + error.message);
+                setError('Error al enviar email: ' + error.message);
                 return;
             }
             setSuccess(true);
@@ -47,48 +47,69 @@ const ForgotPassword: React.FC = () => {
             setLoading(false);
         }
     };
+    const backgroundStyles = {
+        minHeight: '100vh',
+        background: (theme: any) => `linear-gradient(135deg, ${theme.palette.primary.light}1A, ${theme.palette.secondary.light}1A)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 2
+    } as const;
+
+    const cardStyles = {
+        p: { xs: 3, sm: 4 },
+        borderRadius: 3,
+        backgroundColor: 'background.paper',
+        backdropFilter: 'blur(12px)',
+        boxShadow: (theme: any) => `0 20px 45px ${theme.palette.primary.main}22`,
+        animation: 'fadeInUp 400ms ease',
+        '@keyframes fadeInUp': {
+            from: { opacity: 0, transform: 'translateY(12px)' },
+            to: { opacity: 1, transform: 'translateY(0)' }
+        }
+    } as const;
+
 
     if (success) {
         return (
-            <Box sx={{
-                backgroundColor: 'background.default',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '100vh'
-            }}
-            >
+            <Box sx={backgroundStyles}>
                 <Container maxWidth='sm'>
-                    <Paper elevation={3} sx={{ p: 4 }}>
-                        <Box textAlign='center' mb={3}>
-                            <EmailIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-                            <Typography variant="h4" component='h1' gutterBottom>
-                                Email Enviado
-                            </Typography>
-                            <Typography variant="body1" color="text.secondary" mb={3}>
-                                Email Enviado
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" mb={3}>
-                                Email Enviado
-                            </Typography>
-
-                            <Box display='flex' gap={2} justifyContent='center'>
-                                <Button
-                                    variant="contained"
-                                    onClick={() => navigate('/login')}
-                                >
-                                    Volver al Login
-                                </Button>
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => {
-                                        setSuccess(false);
-                                        setEmail('email');
-                                    }}
-                                >
-                                    Enviar Otro Email
-                                </Button>
-                            </Box>
+                    <Paper elevation={8} sx={{ ...cardStyles, textAlign: 'center' }}>
+                        <EmailIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
+                        <Typography variant="h4" component='h1' gutterBottom>
+                            Email enviado
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" mb={2}>
+                            Revisa tu bandeja de entrada y la carpeta de spam para continuar con el proceso.
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" mb={4}>
+                            Si no recibiste el correo, puedes solicitar uno nuevo a continuación.
+                        </Typography>
+                        <Box display='flex' flexDirection={{ xs: 'column', sm: 'row' }} gap={2}>
+                            <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={() => navigate('/login')}
+                                sx={{
+                                    py: 1.5,
+                                    borderRadius: 2,
+                                    background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                                    boxShadow: (theme) => `0 12px 24px ${theme.palette.primary.main}33`
+                                }}
+                            >
+                                Volver al Login
+                            </Button>
+                            <Button
+                                fullWidth
+                                variant="outlined"
+                                onClick={() => {
+                                    setSuccess(false);
+                                    setEmail('');
+                                }}
+                                sx={{ py: 1.5, borderRadius: 2 }}
+                            >
+                                Enviar otro email
+                            </Button>
                         </Box>
                     </Paper>
                 </Container>
@@ -96,17 +117,9 @@ const ForgotPassword: React.FC = () => {
         );
     }
     return (
-        <Box
-            sx={{
-                backgroundColor: 'background.default',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '100vh'
-            }}
-        >
+        <Box sx={backgroundStyles}>
             <Container maxWidth='sm'>
-                <Paper elevation={3} sx={{ p: 4 }}>
+                <Paper elevation={8} sx={cardStyles}>
                     <Box textAlign='center' mb={3}>
                         <EmailIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
                         <Typography variant="h4" component="h1" gutterBottom>
@@ -139,7 +152,19 @@ const ForgotPassword: React.FC = () => {
                             variant="contained"
                             size="large"
                             disabled={loading}
-                            sx={{ mt: 3, mb: 2, py: 1.5 }}
+                            sx={{
+                                mt: 3,
+                                mb: 2,
+                                py: 1.5,
+                                borderRadius: 2,
+                                background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                                boxShadow: (theme) => `0 12px 24px ${theme.palette.primary.main}33`,
+                                transition: 'transform 150ms ease, box-shadow 150ms ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: (theme) => `0 16px 28px ${theme.palette.primary.main}44`
+                                }
+                            }}
                         >
                             {loading ? (
                                 <CircularProgress size={24} />
@@ -148,7 +173,7 @@ const ForgotPassword: React.FC = () => {
                             )}
                         </Button>
                         <Box textAlign='center'>
-                            <Link to='/login'>
+                            <Link to='/login' style={{ textDecoration: 'none' }}>
                                 <Typography variant="body2" color="primary">
                                     ← Volver al Login
                                 </Typography>
@@ -160,5 +185,4 @@ const ForgotPassword: React.FC = () => {
         </Box>
     );
 };
-
-export default ForgotPassword
+export default ForgotPassword;
