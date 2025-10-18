@@ -20,35 +20,112 @@ const ResetPassword: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [linkValid, setLinkValid] = useState(false);
+  const [checkingLink, setCheckingLink] = useState(true);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   // Extraer tokens (Supabase a veces los entrega en el hash #)
   useEffect(() => {
-    let accessToken = searchParams.get('access_token');
-    let refreshToken = searchParams.get('refresh_token');
+    const verifyLink = async () => {
+      setCheckingLink(true);
+      setError('');
 
-    if (!accessToken) {
-      const hash = window.location.hash.startsWith('#')
-        ? window.location.hash.substring(1)
-        : window.location.hash;
-      const hashParams = new URLSearchParams(hash);
-      accessToken = hashParams.get('access_token') || accessToken;
-      refreshToken = hashParams.get('refresh_token') || refreshToken;
-    }
+      try {
+        const url = new URL(window.location.href);
+        const hash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const urlParams = url.searchParams;
+        const hashParams = new URLSearchParams(hash);
 
-    if (accessToken) {
-      setLinkValid(true);
-      // Intentar establecer la sesión si aún no existe
-      // (Ignorar errores silenciosamente)
-      void supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken || ''
-      }).catch(() => { });
-    } else {
-      setLinkValid(false);
-      setError('Enlace inválido o expirado');
-    }
+        const code = urlParams.get('code') || hashParams.get('code');
+        const tokenHash = urlParams.get('token_hash') || hashParams.get('token_hash');
+        const otpToken = urlParams.get('token') || hashParams.get('token');
+        const type = urlParams.get('type') || hashParams.get('type') || 'recovery';
+        const email = urlParams.get('email') || hashParams.get('email') || undefined;
+
+        let accessToken = urlParams.get('access_token') || hashParams.get('access_token') || searchParams.get('access_token');
+        let refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token') || searchParams.get('refresh_token');
+
+        const hasAuthParams = Boolean(
+          code || tokenHash || otpToken || accessToken || refreshToken
+        );
+
+        if (!hasAuthParams) {
+          throw new Error('Enlace inválido o expirado');
+        }
+
+        let valid = false;
+
+        try {
+          const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+          if (!error && data.session) {
+            valid = true;
+          }
+        } catch (getSessionError) {
+          console.debug('getSessionFromUrl error', getSessionError);
+        }
+
+        if (!valid && code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid && tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any,
+          });
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid && otpToken && email) {
+          const { error } = await supabase.auth.verifyOtp({
+            token: otpToken,
+            type: type as any,
+            email,
+          });
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid) {
+          if (accessToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            if (error) throw error;
+            valid = true;
+          }
+        }
+
+        if (!valid) {
+          throw new Error('Enlace inválido o expirado');
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('No se pudo establecer la sesión para restablecer la contraseña.');
+        }
+
+        const cleanUrl = `${url.origin}${url.pathname}`;
+        window.history.replaceState({}, document.title, cleanUrl);
+
+        setLinkValid(true);
+      } catch (err) {
+        console.error(err);
+        const message = err instanceof Error ? err.message : 'Enlace inválido o expirado';
+        setError(message);
+        setLinkValid(false);
+      } finally {
+        setCheckingLink(false);
+      }
+    };
+
+    void verifyLink();
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,6 +165,19 @@ const ResetPassword: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (checkingLink) {
+    return (
+      <Box display="flex" alignItems="center" justifyContent="center" minHeight="100vh">
+        <Container maxWidth="sm">
+          <Paper sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="h5" gutterBottom>Validando enlace…</Typography>
+            <CircularProgress />
+          </Paper>
+        </Container>
+      </Box>
+    );
+  }
 
   if (!linkValid && !success) {
     return (

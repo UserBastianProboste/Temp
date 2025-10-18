@@ -14,7 +14,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         detectSessionInUrl: true,     // ✅ Detectar sesión en URL
         storage: localStorage,        // ✅ Usar localStorage
         storageKey: 'sb-auth-token',  // ✅ Key personalizada
-        flowType: 'pkce',             // ✅ Más seguro
         debug: false,                 // ✅ DESACTIVAR logs internos de Supabase
     },
     global: {
