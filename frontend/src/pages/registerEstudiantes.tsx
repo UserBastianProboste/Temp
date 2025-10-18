@@ -75,6 +75,7 @@ const RegisterEstudiantes: React.FC = () => {
   const [otpSending, setOtpSending] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [lastVerifiedCode, setLastVerifiedCode] = useState<string | null>(null);
   const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
@@ -164,6 +165,7 @@ const RegisterEstudiantes: React.FC = () => {
       setTimerActive(false);
       setTimer(CODE_RESEND_SECONDS);
       setCodeDigits(Array(6).fill(''));
+      setLastVerifiedCode(null);
     }
     setAlert(null);
     setFormData(prev => ({
@@ -195,6 +197,7 @@ const RegisterEstudiantes: React.FC = () => {
       setTimer(CODE_RESEND_SECONDS);
       setTimerActive(true);
       setEmailVerified(false);
+      setLastVerifiedCode(null);
       setCodeDigits(Array(6).fill(''));
       setFormData(prev => ({
         ...prev,
@@ -229,6 +232,7 @@ const RegisterEstudiantes: React.FC = () => {
       setTimer(CODE_RESEND_SECONDS);
       setTimerActive(true);
       setEmailVerified(false);
+      setLastVerifiedCode(null);
       setCodeDigits(Array(6).fill(''));
       setFormData(prev => ({
         ...prev,
@@ -255,6 +259,7 @@ const RegisterEstudiantes: React.FC = () => {
     setEmailVerified(false);
     setVerifyingOtp(false);
     setOtpSending(false);
+    setLastVerifiedCode(null);
     void signOut();
     setFormData(prev => ({
       ...prev,
@@ -285,11 +290,13 @@ const RegisterEstudiantes: React.FC = () => {
           ...prev,
           verificationCode: '',
         }));
+        setLastVerifiedCode(null);
         setTimeout(() => codeRefs.current[0]?.focus(), 0);
         return;
       }
 
       setEmailVerified(true);
+      setLastVerifiedCode(joined);
       setEmailPhase('credentials');
       setTimerActive(false);
       setAlert({ severity: 'success', message: 'Correo verificado correctamente. Ahora crea una contraseña segura.' });
@@ -305,6 +312,7 @@ const RegisterEstudiantes: React.FC = () => {
         ...prev,
         verificationCode: '',
       }));
+      setLastVerifiedCode(null);
       setTimeout(() => codeRefs.current[0]?.focus(), 0);
     } finally {
       setVerifyingOtp(false);
@@ -321,7 +329,8 @@ const RegisterEstudiantes: React.FC = () => {
     if (
       emailPhase === 'code' &&
       joined.length === nextDigits.length &&
-      !nextDigits.includes('')
+      !nextDigits.includes('') &&
+      (lastVerifiedCode === null || joined !== lastVerifiedCode)
     ) {
       void verifyCodeWithSupabase(joined);
     }
