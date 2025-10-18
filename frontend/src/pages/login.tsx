@@ -122,18 +122,32 @@ const Login: React.FC = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        backgroundColor: 'background.default',
+        background: theme => `linear-gradient(135deg, ${theme.palette.primary.light}1A, ${theme.palette.secondary.light}1A)`,
         display: 'flex',
-        alignItems: 'center'
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 2
       }}
     >
       <Container maxWidth="sm">
         <Paper
-          elevation={3}
+          elevation={8}
           sx={{
-            p: 4,
-            borderRadius: 2,
-            backgroundColor: 'white'
+            p: { xs: 3, sm: 4 },
+            borderRadius: 3,
+            backgroundColor: 'background.paper',
+            backdropFilter: 'blur(12px)',
+            boxShadow: theme => `0 20px 45px ${theme.palette.primary.main}22`,
+            transition: 'transform 200ms ease, box-shadow 200ms ease',
+            animation: 'fadeInUp 400ms ease',
+            '@keyframes fadeInUp': {
+              from: { opacity: 0, transform: 'translateY(12px)' },
+              to: { opacity: 1, transform: 'translateY(0)' }
+            },
+            '&:hover': {
+              transform: 'translateY(-4px)',
+              boxShadow: theme => `0 28px 55px ${theme.palette.primary.main}33`
+            }
           }}
         >
           <Box sx={{ textAlign: 'center', mb: 3 }}>
@@ -151,8 +165,10 @@ const Login: React.FC = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleLogin} noValidate>
+          <Box component="form" onSubmit={handleLogin} noValidate sx={{ display: 'grid', gap: 2 }}>
             <TextField
+              fullWidth
+              margin="normal"
               type="email"
               label="Correo Electrónico"
               value={email}
@@ -168,6 +184,8 @@ const Login: React.FC = () => {
             />
 
             <TextField
+              fullWidth
+              margin="normal"
               type="password"
               label="Contraseña"
               value={password}
@@ -190,11 +208,23 @@ const Login: React.FC = () => {
                 Recuperar contraseña
               </Button>
             </Box>
+
             <Button
               type="submit"
               disabled={loading}
               size="large"
-              sx={{ mt: 3, py: 1.5 }}
+              sx={{
+                mt: 1,
+                py: 1.5,
+                borderRadius: 2,
+                background: theme => `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                boxShadow: theme => `0 12px 24px ${theme.palette.primary.main}33`,
+                transition: 'transform 150ms ease, box-shadow 150ms ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme => `0 16px 28px ${theme.palette.primary.main}44`
+                }
+              }}
             >
               {loading ? (
                 <>
@@ -204,7 +234,8 @@ const Login: React.FC = () => {
               ) : (
                 'Iniciar Sesión'
               )}
-            </Button>
+            </Button
+                >
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
