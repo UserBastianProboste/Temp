@@ -20,7 +20,6 @@ export const estudianteService = {
         email: estudiante.email,
         telefono: estudiante.telefono || null,
         carrera: estudiante.carrera || null,
-        sede: estudiante.sede || null,
       }])
       .select('*')
       .single();

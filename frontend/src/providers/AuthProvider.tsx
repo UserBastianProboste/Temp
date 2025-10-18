@@ -1,5 +1,5 @@
 import type { AuthProviderProps } from "../types/auth.types";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import { supabase } from "../services/supabaseClient";
 import type { Session, User } from "@supabase/supabase-js";
@@ -19,7 +19,6 @@ const extractRole = (user: User | null) =>
 
 type SignUpArgs = { email: string; password: string; options?: { emailRedirectTo?: string } };
 type SignInArgs = { email: string; password: string };
-type CompleteProfileArgs = { password: string; data?: Record<string, any> };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -69,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   // ---- API estricta de password (sin OTP/magic) ----
-  const signUp = useCallback(async ({ email, password, options }: SignUpArgs) => {
+  const signUp = async ({ email, password, options }: SignUpArgs) => {
     if (!email || !password) throw new Error("email y password son obligatorios");
     return await supabase.auth.signUp({
       email,
@@ -78,47 +77,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         emailRedirectTo: options?.emailRedirectTo ?? `${window.location.origin}/auth/callback`,
       },
     });
-  }, []);
+  };
 
-  const signIn = useCallback(async ({ email, password }: SignInArgs) => {
+  const signIn = async ({ email, password }: SignInArgs) => {
     if (!email || !password) throw new Error("email y password son obligatorios");
     return await supabase.auth.signInWithPassword({ email, password });
-  }, []);
+  };
 
-  const sendPasswordReset = useCallback(async (email: string) => {
+  const sendPasswordReset = async (email: string) => {
     if (!email) throw new Error("email requerido");
     return await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-  }, []);
+  };
 
-  const exchangeCode = useCallback(async (code: string) => supabase.auth.exchangeCodeForSession(code), []);
-  const updatePassword = useCallback(async (password: string) => supabase.auth.updateUser({ password }), []);
-  const signOut = useCallback(async () => supabase.auth.signOut(), []);
-  const sendEmailOtp = useCallback(
-    async (email: string, options?: { shouldCreateUser?: boolean }) => {
-      if (!email) throw new Error("email requerido");
-      return await supabase.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: options?.shouldCreateUser ?? true },
-      });
-    },
-    [],
-  );
-  const verifyEmailOtp = useCallback(
-    async ({ email, token }: { email: string; token: string }) => {
-      if (!email || !token) throw new Error("email y token son obligatorios");
-      return await supabase.auth.verifyOtp({ type: "email", email, token });
-    },
-    [],
-  );
-  const completeUserProfile = useCallback(
-    async ({ password, data }: CompleteProfileArgs) => {
-      if (!password) throw new Error("password requerido");
-      return await supabase.auth.updateUser({ password, data });
-    },
-    [],
-  );
+  const exchangeCode = async (code: string) => supabase.auth.exchangeCodeForSession(code);
+  const updatePassword = async (password: string) => supabase.auth.updateUser({ password });
+  const signOut = async () => supabase.auth.signOut();
 
   const ctx = useMemo(() => ({
     currentUser,
@@ -127,31 +102,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     role,
     roleLoading,
     isAuthenticated: !!currentUser,
-    signUp,
-    signIn,
-    signOut,
-    sendPasswordReset,
-    exchangeCode,
-    updatePassword,
-    sendEmailOtp,
-    verifyEmailOtp,
-    completeUserProfile,
-  }), [
-    completeUserProfile,
-    currentSession,
-    currentUser,
-    exchangeCode,
-    loading,
-    role,
-    roleLoading,
-    sendEmailOtp,
-    sendPasswordReset,
-    signIn,
-    signOut,
-    signUp,
-    updatePassword,
-    verifyEmailOtp,
-  ]);
+    signUp, signIn, signOut,
+    sendPasswordReset, exchangeCode, updatePassword,
+  }), [currentUser, currentSession, loading, role, roleLoading]);
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
 };
