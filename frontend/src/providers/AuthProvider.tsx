@@ -17,7 +17,14 @@ const extractRole = (user: User | null) =>
         normalizeRole(user.app_metadata?.role as any) ??
         normalizeRole(user.user_metadata?.role as any);
 
-type SignUpArgs = { email: string; password: string; options?: { emailRedirectTo?: string } };
+type SignUpArgs = {
+  email: string;
+  password: string;
+  options?: {
+    emailRedirectTo?: string;
+    data?: Record<string, any>;
+  };
+};
 type SignInArgs = { email: string; password: string };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
@@ -75,6 +82,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       password,
       options: {
         emailRedirectTo: options?.emailRedirectTo ?? `${window.location.origin}/auth/callback`,
+        data: options?.data,
       },
     });
   };
@@ -93,6 +101,53 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const exchangeCode = async (code: string) => supabase.auth.exchangeCodeForSession(code);
   const updatePassword = async (password: string) => supabase.auth.updateUser({ password });
+
+  const sendEmailOtp = async (
+    email: string,
+    options?: {
+      shouldCreateUser?: boolean;
+      emailRedirectTo?: string;
+      data?: Record<string, any>;
+      captchaToken?: string;
+    },
+  ) => {
+    if (!email) throw new Error("email requerido");
+    return await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: options?.shouldCreateUser ?? true,
+        emailRedirectTo: options?.emailRedirectTo,
+        data: options?.data,
+        captchaToken: options?.captchaToken,
+      },
+    });
+  };
+
+  const verifyEmailOtp = async ({
+    email,
+    token,
+    type = 'signup',
+    redirectTo,
+  }: {
+    email: string;
+    token: string;
+    type?: 'signup' | 'invite' | 'magiclink' | 'recovery' | 'email_change' | 'email';
+    redirectTo?: string;
+  }) => {
+    if (!email || !token) throw new Error("email y token son obligatorios");
+    return await supabase.auth.verifyOtp({ type, email, token, options: { redirectTo } });
+  };
+
+  const completeAccountSetup = async ({
+    password,
+    data,
+  }: { password?: string; data?: Record<string, any> }) => {
+    if (!password && !data) {
+      throw new Error("Debe proporcionarse password o metadatos para actualizar el usuario");
+    }
+    return await supabase.auth.updateUser({ password, data });
+  };
+
   const signOut = async () => supabase.auth.signOut();
 
   const ctx = useMemo(() => ({
@@ -104,6 +159,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isAuthenticated: !!currentUser,
     signUp, signIn, signOut,
     sendPasswordReset, exchangeCode, updatePassword,
+    sendEmailOtp, verifyEmailOtp, completeAccountSetup,
   }), [currentUser, currentSession, loading, role, roleLoading]);
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
