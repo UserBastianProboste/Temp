@@ -1,4 +1,11 @@
-import type { AuthError, Session, User } from "@supabase/supabase-js"
+import type {
+    AuthError,
+    AuthResponse,
+    AuthTokenResponse,
+    Session,
+    User,
+    UserResponse,
+} from "@supabase/supabase-js"
 import type { ReactNode } from "react"
 
 
@@ -11,6 +18,7 @@ export interface SignUpCredentials {
     email: string
     password: string
     options?: {
+        emailRedirectTo?: string
         data?: Record<string, any>
     }
 }
@@ -49,5 +57,18 @@ export interface AuthContextType {
         error: AuthError | null
     }>
     signOut: () => Promise<{ error: AuthError | null }>
+    sendPasswordReset: (email: string) => Promise<{ data: {}; error: AuthError | null }>
+    exchangeCode: (code: string) => Promise<AuthResponse>
+    updatePassword: (password: string) => Promise<UserResponse>
+    sendEmailOtp: (
+        email: string,
+        options?: { shouldCreateUser?: boolean }
+    ) => Promise<AuthResponse>
+    verifyEmailOtp: (
+        params: { email: string; token: string; type?: 'email' | 'recovery' }
+    ) => Promise<AuthTokenResponse>
+    completeAccountSetup: (
+        params: { password?: string; data?: Record<string, any> }
+    ) => Promise<UserResponse>
 
 }
