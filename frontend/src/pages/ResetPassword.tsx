@@ -30,42 +30,74 @@ const ResetPassword: React.FC = () => {
       setCheckingLink(true);
       setError('');
 
-      let valid = false;
-
       try {
         const url = new URL(window.location.href);
-        const code = url.searchParams.get('code');
-        const tokenHash = url.searchParams.get('token_hash');
-        const type = url.searchParams.get('type');
-        let accessToken = searchParams.get('access_token');
-        let refreshToken = searchParams.get('refresh_token');
+        const hash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const urlParams = url.searchParams;
+        const hashParams = new URLSearchParams(hash);
 
-        if (code) {
+        const code = urlParams.get('code') || hashParams.get('code');
+        const tokenHash = urlParams.get('token_hash') || hashParams.get('token_hash');
+        const otpToken = urlParams.get('token') || hashParams.get('token');
+        const type = urlParams.get('type') || hashParams.get('type') || 'recovery';
+        const email = urlParams.get('email') || hashParams.get('email') || undefined;
+
+        let accessToken = urlParams.get('access_token') || hashParams.get('access_token') || searchParams.get('access_token');
+        let refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token') || searchParams.get('refresh_token');
+
+        const hasAuthParams = Boolean(
+          code || tokenHash || otpToken || accessToken || refreshToken
+        );
+
+        if (!hasAuthParams) {
+          throw new Error('Enlace inválido o expirado');
+        }
+
+        let valid = false;
+
+        try {
+          const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+          if (!error && data.session) {
+            valid = true;
+          }
+        } catch (getSessionError) {
+          console.debug('getSessionFromUrl error', getSessionError);
+        }
+
+        if (!valid && code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
           valid = true;
-        } else if (tokenHash && type) {
+        }
+
+        if (!valid && tokenHash) {
           const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: type as any,
           });
           if (error) throw error;
           valid = true;
-        } else {
-          if (!accessToken) {
-            const hash = window.location.hash.startsWith('#')
-              ? window.location.hash.substring(1)
-              : window.location.hash;
-            const hashParams = new URLSearchParams(hash);
-            accessToken = hashParams.get('access_token') || accessToken;
-            refreshToken = hashParams.get('refresh_token') || refreshToken;
-          }
+        }
 
+        if (!valid && otpToken && email) {
+          const { error } = await supabase.auth.verifyOtp({
+            token: otpToken,
+            type: type as any,
+            email,
+          });
+          if (error) throw error;
+          valid = true;
+        }
+
+        if (!valid) {
           if (accessToken) {
-            await supabase.auth.setSession({
+            const { error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || '',
-            }).catch(() => { /* ignore setSession errors silently */ });
+            });
+            if (error) throw error;
             valid = true;
           }
         }
@@ -78,6 +110,9 @@ const ResetPassword: React.FC = () => {
         if (!session) {
           throw new Error('No se pudo establecer la sesión para restablecer la contraseña.');
         }
+
+        const cleanUrl = `${url.origin}${url.pathname}`;
+        window.history.replaceState({}, document.title, cleanUrl);
 
         setLinkValid(true);
       } catch (err) {
