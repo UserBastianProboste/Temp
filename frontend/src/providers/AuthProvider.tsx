@@ -103,13 +103,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const updatePassword = async (password: string) => supabase.auth.updateUser({ password });
 
   const sendEmailOtp = async (
-    email: string,
-    options?: {
-      shouldCreateUser?: boolean;
-      emailRedirectTo?: string;
-      data?: Record<string, any>;
-      captchaToken?: string;
-    },
+      email: string,
+      options?: {
+        shouldCreateUser?: boolean;
+        emailRedirectTo?: string;
+        data?: Record<string, any>;
+        captchaToken?: string;
+      },
   ) => {
     if (!email) throw new Error("email requerido");
     return await supabase.auth.signInWithOtp({
@@ -124,11 +124,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const verifyEmailOtp = async ({
-    email,
-    token,
-    type = 'signup',
-    redirectTo,
-  }: {
+                                  email,
+                                  token,
+                                  type = 'signup',
+                                  redirectTo,
+                                }: {
     email: string;
     token: string;
     type?: 'signup' | 'invite' | 'magiclink' | 'recovery' | 'email_change' | 'email';
@@ -139,9 +139,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const completeAccountSetup = async ({
-    password,
-    data,
-  }: { password?: string; data?: Record<string, any> }) => {
+                                        password,
+                                        data,
+                                      }: { password?: string; data?: Record<string, any> }) => {
     if (!password && !data) {
       throw new Error("Debe proporcionarse password o metadatos para actualizar el usuario");
     }
