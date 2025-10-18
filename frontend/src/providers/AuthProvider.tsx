@@ -17,8 +17,9 @@ const extractRole = (user: User | null) =>
         normalizeRole(user.app_metadata?.role as any) ??
         normalizeRole(user.user_metadata?.role as any);
 
-type SignUpArgs = { email: string; password: string; options?: { emailRedirectTo?: string } };
 type SignInArgs = { email: string; password: string };
+type VerifyEmailOtpArgs = { email: string; token: string };
+type UpdateUserProfileArgs = { password?: string; data?: Record<string, any> };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -67,21 +68,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  // ---- API estricta de password (sin OTP/magic) ----
-  const signUp = async ({ email, password, options }: SignUpArgs) => {
+  const signIn = async ({ email, password }: SignInArgs) => {
     if (!email || !password) throw new Error("email y password son obligatorios");
-    return await supabase.auth.signUp({
+    return await supabase.auth.signInWithPassword({ email, password });
+  };
+
+  const sendEmailOtp = async (email: string) => {
+    if (!email) throw new Error("email requerido");
+    return await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
-        emailRedirectTo: options?.emailRedirectTo ?? `${window.location.origin}/auth/callback`,
+        shouldCreateUser: true,
       },
     });
   };
 
-  const signIn = async ({ email, password }: SignInArgs) => {
-    if (!email || !password) throw new Error("email y password son obligatorios");
-    return await supabase.auth.signInWithPassword({ email, password });
+  const verifyEmailOtp = async ({ email, token }: VerifyEmailOtpArgs) => {
+    if (!email || !token) throw new Error("email y código son obligatorios");
+    return await supabase.auth.verifyOtp({
+      type: 'email',
+      email,
+      token,
+    });
   };
 
   const sendPasswordReset = async (email: string) => {
@@ -93,6 +101,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const exchangeCode = async (code: string) => supabase.auth.exchangeCodeForSession(code);
   const updatePassword = async (password: string) => supabase.auth.updateUser({ password });
+  const updateUserProfile = async ({ password, data }: UpdateUserProfileArgs) => {
+    if (!password && !data) throw new Error("Se requiere contraseña o metadata para actualizar el usuario");
+    return await supabase.auth.updateUser({ password, data });
+  };
   const signOut = async () => supabase.auth.signOut();
 
   const ctx = useMemo(() => ({
@@ -102,8 +114,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     role,
     roleLoading,
     isAuthenticated: !!currentUser,
-    signUp, signIn, signOut,
-    sendPasswordReset, exchangeCode, updatePassword,
+    signIn, signOut,
+    sendEmailOtp,
+    verifyEmailOtp,
+    sendPasswordReset,
+    exchangeCode,
+    updatePassword,
+    updateUserProfile,
   }), [currentUser, currentSession, loading, role, roleLoading]);
 
   return <AuthContext.Provider value={ctx}>{children}</AuthContext.Provider>;
