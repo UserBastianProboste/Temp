@@ -181,7 +181,15 @@ const Login: React.FC = () => {
                 ),
               }}
             />
-
+            <Box sx={{ textAlign: 'right', mt: 1 }}>
+              <Button
+                  variant="text"
+                  onClick={() => navigate('/forgot-password')}
+                  sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
+              >
+                Recuperar contraseña
+              </Button>
+            </Box>
             <Button
               type="submit"
               disabled={loading}
