@@ -355,11 +355,9 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
                 </MenuItem>
                 <Divider sx={{ my: 0.5 }} />
                 <MenuItem
-                    onClick={() => {
-                      handleCloseUserMenu();
-                      const homePath = resolvedRole === 'coordinador' ? '/coordinador/dashboard' : '/estudiante/dashboard';
-                      navigate(homePath);
-                    }}
+                    component={RouterLink}
+                    to="/perfil"
+                    onClick={handleCloseUserMenu}
                 >
                   <ListItemIcon>
                     <SettingsIcon fontSize="small" />
