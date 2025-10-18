@@ -7,6 +7,21 @@ export interface SignInCredentials {
     password: string
 }
 
+export interface SignUpCredentials {
+    email: string
+    password: string
+    options?: {
+        data?: Record<string, any>
+    }
+}
+
+export interface ResetPasswordOptions {
+    options?: {
+        redirectTo?: string
+        captchaToken?: string
+    }
+}
+
 export interface AuthProviderProps {
     children: ReactNode
 }
@@ -19,6 +34,13 @@ export interface AuthContextType {
     role?: string | null
     roleLoading?: boolean
     isAuthenticated: boolean
+    signUp: (credentials: SignUpCredentials) => Promise<{
+        data: {
+            user: User | null;
+            session: Session | null
+        } | null;
+        error: AuthError | null
+    }>
     signIn: (credentials: SignInCredentials) => Promise<{
         data: {
             user: User | null;
@@ -27,38 +49,5 @@ export interface AuthContextType {
         error: AuthError | null
     }>
     signOut: () => Promise<{ error: AuthError | null }>
-    sendPasswordReset: (email: string) => Promise<{ data: Record<string, unknown> | null; error: AuthError | null }>
-    exchangeCode: (code: string) => Promise<{
-        data: {
-            session: Session | null;
-            user: User | null;
-        } | null;
-        error: AuthError | null;
-    }>
-    updatePassword: (password: string) => Promise<{
-        data: {
-            user: User | null;
-        } | null;
-        error: AuthError | null;
-    }>
-    sendEmailOtp: (email: string) => Promise<{
-        data: {
-            user: User | null;
-            session: Session | null;
-        } | null;
-        error: AuthError | null;
-    }>
-    verifyEmailOtp: (params: { email: string; token: string }) => Promise<{
-        data: {
-            user: User | null;
-            session: Session | null;
-        } | null;
-        error: AuthError | null;
-    }>
-    updateUserProfile: (payload: { password?: string; data?: Record<string, any> }) => Promise<{
-        data: {
-            user: User | null;
-        } | null;
-        error: AuthError | null;
-    }>
+
 }
