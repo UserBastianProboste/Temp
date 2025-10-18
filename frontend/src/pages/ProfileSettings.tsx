@@ -37,9 +37,10 @@ const emptyForm: ProfileForm = {
 };
 
 export default function ProfileSettings() {
-  const { currentUser, sendPasswordReset, updatePassword } = useAuth();
+  const { currentUser, sendPasswordReset, updatePassword, completeAccountSetup } = useAuth();
   const [profile, setProfile] = useState<ProfileRecord | null>(null);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
+  const [lastSavedForm, setLastSavedForm] = useState<ProfileForm>(emptyForm);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,11 +65,19 @@ export default function ProfileSettings() {
         const data = await fetchProfile(userId);
         if (!isMounted) return;
         setProfile(data);
-        setForm({
-          full_name: data?.full_name ?? currentUser?.user_metadata?.full_name ?? '',
-          phone: data?.phone ?? '',
-          alternate_email: data?.alternate_email ?? '',
-        });
+        const nextForm: ProfileForm = {
+          full_name: data?.full_name ?? (currentUser?.user_metadata?.full_name as string | undefined) ?? '',
+          phone:
+            (data?.phone as string | null | undefined) ??
+            (currentUser?.user_metadata?.phone as string | undefined) ??
+            '',
+          alternate_email:
+            (data?.alternate_email as string | null | undefined) ??
+            (currentUser?.user_metadata?.alternate_email as string | undefined) ??
+            '',
+        };
+        setForm(nextForm);
+        setLastSavedForm(nextForm);
         if (data?.avatar_path) {
           try {
             const url = await getAvatarSignedUrl(data.avatar_path);
@@ -83,6 +92,13 @@ export default function ProfileSettings() {
         console.error('Error loading profile', error);
         if (isMounted) {
           setFeedback({ type: 'error', message: 'No se pudo cargar tu información de perfil.' });
+          const fallbackForm: ProfileForm = {
+            full_name: (currentUser?.user_metadata?.full_name as string | undefined) ?? '',
+            phone: (currentUser?.user_metadata?.phone as string | undefined) ?? '',
+            alternate_email: (currentUser?.user_metadata?.alternate_email as string | undefined) ?? '',
+          };
+          setForm(fallbackForm);
+          setLastSavedForm(fallbackForm);
         }
       } finally {
         if (isMounted) {
@@ -96,7 +112,12 @@ export default function ProfileSettings() {
     return () => {
       isMounted = false;
     };
-  }, [userId, currentUser?.user_metadata?.full_name]);
+  }, [
+    userId,
+    currentUser?.user_metadata?.full_name,
+    currentUser?.user_metadata?.phone,
+    currentUser?.user_metadata?.alternate_email,
+  ]);
 
   const handleFieldChange = (field: keyof ProfileForm) => (event: ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({ ...prev, [field]: event.target.value }));
@@ -120,8 +141,18 @@ export default function ProfileSettings() {
     setFeedback(null);
     try {
       const updated = await upsertProfile(userId, trimmed);
-      setProfile(updated);
+      if (updated) {
+        setProfile(updated);
+      }
+      await completeAccountSetup({
+        data: {
+          full_name: trimmed.full_name,
+          phone: trimmed.phone,
+          alternate_email: trimmed.alternate_email,
+        },
+      });
       setForm(trimmed);
+      setLastSavedForm(trimmed);
       setFeedback({ type: 'success', message: 'Tu información se guardó correctamente.' });
     } catch (error) {
       console.error('Error saving profile', error);
@@ -180,13 +211,12 @@ export default function ProfileSettings() {
   };
 
   const canSave = useMemo(() => {
-    if (!profile) return true;
     return (
-      profile.full_name !== form.full_name ||
-      (profile.phone ?? '') !== form.phone ||
-      (profile.alternate_email ?? '') !== form.alternate_email
+      form.full_name !== lastSavedForm.full_name ||
+      form.phone !== lastSavedForm.phone ||
+      form.alternate_email !== lastSavedForm.alternate_email
     );
-  }, [profile, form.full_name, form.phone, form.alternate_email]);
+  }, [form.full_name, form.phone, form.alternate_email, lastSavedForm]);
 
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
