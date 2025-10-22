@@ -1,3 +1,4 @@
+import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { keyframes } from '@mui/system';
 import { styled } from '@mui/material/styles';

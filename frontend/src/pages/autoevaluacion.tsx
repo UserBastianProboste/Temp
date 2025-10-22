@@ -28,7 +28,6 @@ const Autoevaluacion: React.FC = () => {
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [alertSeverity, setAlertSeverity] = useState<"success" | "error" | "warning" | "info">("info");
-  const [notaCalificada, setNotaCalificada] = useState<number | null>(null);
 
   const mostrarAlerta = (
     mensaje: string,
@@ -76,11 +75,6 @@ const Autoevaluacion: React.FC = () => {
         if (autoeval && autoeval.length > 0) {
           setForm({ ...initialForm, ...autoeval[0] });
           setYaEnviado(true);
-          
-          // Si tiene nota calificada, guardarla para mostrar
-          if (autoeval[0].nota_autoevaluacion !== null && autoeval[0].nota_autoevaluacion !== undefined) {
-            setNotaCalificada(autoeval[0].nota_autoevaluacion);
-          }
         } else {
           setForm(initialForm);
         }
@@ -96,8 +90,6 @@ const Autoevaluacion: React.FC = () => {
   }, [practicaId]);
 
   const handleChange = (field: string, value: any) => {
-    // No permitir cambios si ya fue calificada
-    if (notaCalificada !== null) return;
     setForm({ ...form, [field]: value });
   };
 
@@ -370,7 +362,6 @@ const Autoevaluacion: React.FC = () => {
                           <Radio
                             checked={form[`gestion_${index}`] === c}
                             onChange={() => handleChange(`gestion_${index}`, c)}
-                            disabled={notaCalificada !== null}
                             sx={{
                               transform: { xs: "scale(0.8)", sm: "scale(0.9)", md: "scale(1)" },
                             }}
@@ -460,7 +451,6 @@ const Autoevaluacion: React.FC = () => {
                           <Radio
                             checked={form[`personales_${index}`] === c}
                             onChange={() => handleChange(`personales_${index}`, c)}
-                            disabled={notaCalificada !== null}
                             sx={{
                               transform: { xs: "scale(0.8)", sm: "scale(0.9)", md: "scale(1)" },
                             }}
@@ -523,7 +513,6 @@ const Autoevaluacion: React.FC = () => {
                 rows={4}
                 fullWidth
                 required
-                disabled={notaCalificada !== null}
                 value={form.aspectos_relevantes || ""}
                 onChange={(e) => handleChange("aspectos_relevantes", e.target.value)}
                 InputProps={{ sx: { fontSize: { xs: "0.85rem", sm: "1rem" } } }}
@@ -544,7 +533,6 @@ const Autoevaluacion: React.FC = () => {
                 multiline
                 rows={4}
                 fullWidth
-                disabled={notaCalificada !== null}
                 value={form.comentarios || ""}
                 onChange={(e) => handleChange("comentarios", e.target.value)}
                 InputProps={{ sx: { fontSize: { xs: "0.85rem", sm: "1rem" } } }}
@@ -555,7 +543,6 @@ const Autoevaluacion: React.FC = () => {
                 displayEmpty
                 fullWidth
                 required
-                disabled={notaCalificada !== null}
                 onChange={(e) => handleChange("recomendacion", e.target.value)}
                 sx={{
                   fontSize: { xs: "0.85rem", sm: "1rem" },
@@ -575,7 +562,6 @@ const Autoevaluacion: React.FC = () => {
                 rows={4}
                 fullWidth
                 required
-                disabled={notaCalificada !== null}
                 value={form.justificacion || ""}
                 onChange={(e) => handleChange("justificacion", e.target.value)}
                 InputLabelProps={{ sx: { fontSize: { xs: "0.85rem", sm: "1rem" } } }}
@@ -585,199 +571,15 @@ const Autoevaluacion: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Sección de nota calificada */}
-        {yaEnviado && notaCalificada !== null && (
-          <Card
-            sx={{
-              borderRadius: 2,
-              boxShadow: 3,
-              bgcolor: "success.light",
-              width: "100%",
-              maxWidth: { xs: "100%", sm: "900px" },
-              mx: "auto",
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-              <Typography
-                variant="h5"
-                sx={{
-                  mb: 2,
-                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
-                  fontWeight: 600,
-                  color: "success.contrastText",
-                  textAlign: "center",
-                }}
-              >
-                🎉 Tu Autoevaluación ha sido Calificada
-              </Typography>
-
-              <Typography
-                sx={{
-                  mb: 3,
-                  textAlign: "center",
-                  color: "success.contrastText",
-                  fontSize: { xs: "0.9rem", sm: "1rem" },
-                  fontWeight: 500,
-                  bgcolor: "rgba(255, 255, 255, 0.2)",
-                  py: 1,
-                  px: 2,
-                  borderRadius: 1,
-                }}
-              >
-                🔒 Los campos de la autoevaluación han sido bloqueados y no pueden ser modificados
-              </Typography>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: 3,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  mt: 2,
-                }}
-              >
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "success.contrastText",
-                      mb: 1,
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
-                      fontWeight: 500,
-                    }}
-                  >
-                    Nota Original
-                  </Typography>
-                  <Typography
-                    variant="h3"
-                    sx={{
-                      fontWeight: 700,
-                      color: "success.contrastText",
-                      fontSize: { xs: "2rem", sm: "2.5rem" },
-                    }}
-                  >
-                    {(notaCalificada / 0.1).toFixed(2)}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "success.contrastText",
-                      fontSize: { xs: "0.75rem", sm: "0.85rem" },
-                    }}
-                  >
-                    Escala 1.0 - 7.0
-                  </Typography>
-                </Box>
-
-                <Box
-                  sx={{
-                    width: { xs: "100%", sm: "2px" },
-                    height: { xs: "2px", sm: "80px" },
-                    bgcolor: "success.contrastText",
-                    opacity: 0.5,
-                  }}
-                />
-
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "success.contrastText",
-                      mb: 1,
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
-                      fontWeight: 500,
-                    }}
-                  >
-                    Nota Ponderada (10%)
-                  </Typography>
-                  <Typography
-                    variant="h3"
-                    sx={{
-                      fontWeight: 700,
-                      color: "warning.light",
-                      fontSize: { xs: "2rem", sm: "2.5rem" },
-                    }}
-                  >
-                    {notaCalificada.toFixed(2)}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "success.contrastText",
-                      fontSize: { xs: "0.75rem", sm: "0.85rem" },
-                    }}
-                  >
-                    Contribución a nota final
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Typography
-                sx={{
-                  mt: 3,
-                  textAlign: "center",
-                  color: "success.contrastText",
-                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                  fontStyle: "italic",
-                }}
-              >
-                Esta nota representa el 10% de tu evaluación total de práctica profesional.
-              </Typography>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Botón final */}
         {!yaEnviado ? (
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={handleEnviar}
-            sx={{ 
-              py: 1.5, 
-              fontSize: { xs: "0.9rem", sm: "1rem" },
-              fontWeight: 600 
-            }}
-          >
+          <Button variant="contained" color="primary" onClick={handleEnviar}>
             Enviar Autoevaluación
           </Button>
         ) : (
-          !notaCalificada && (
-            <Card
-              sx={{
-                borderRadius: 2,
-                boxShadow: 2,
-                bgcolor: "info.light",
-                width: "100%",
-                maxWidth: { xs: "100%", sm: "900px" },
-                mx: "auto",
-              }}
-            >
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography
-                  sx={{
-                    textAlign: "center",
-                    fontWeight: 600,
-                    color: "info.contrastText",
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  }}
-                >
-                  ✅ Autoevaluación enviada correctamente
-                </Typography>
-                <Typography
-                  sx={{
-                    textAlign: "center",
-                    color: "info.contrastText",
-                    fontSize: { xs: "0.85rem", sm: "0.95rem" },
-                    mt: 1,
-                  }}
-                >
-                  Tu autoevaluación está pendiente de calificación por el coordinador.
-                </Typography>
-              </CardContent>
-            </Card>
-          )
+          <Typography sx={{ mt: 2, fontWeight: "normal", color: "red" }}>
+            Autoevaluación enviada correctamente
+          </Typography>
         )}
       </Box>
       <Snackbar

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -25,6 +25,8 @@ import type { EvaluacionData } from '../services/evaluacionSupervisorService';
 
 const EvaluacionSupervisorPublica = () => {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [tokenValido, setTokenValido] = useState(false);

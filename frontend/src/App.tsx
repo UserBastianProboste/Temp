@@ -26,7 +26,7 @@ import ListaAutoevaluaciones from './pages/ListaAutoevaluaciones';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
-import CoordinadorEvaluarInforme from './pages/coordinadorEvaluarInforme';
+import ProfileSettings from './pages/ProfileSettings';
 
 function App() {
   return (
@@ -50,6 +50,8 @@ function App() {
             {/* Rutas protegidas por autenticación */}
             <Route path='/' element={<RouteGuard />}>
 
+              <Route path="perfil" element={<ProfileSettings />} />
+
               {/* Rutas para el rol de estudiante */}
               <Route path='/estudiante' element={<RouteGuard roleAllowed='estudiante' />}>
                 <Route path="/estudiante/dashboard" element={<DashboardEstudiante />} />
@@ -57,6 +59,7 @@ function App() {
                 <Route path='/estudiante/seleccion-practica' element={<SeleccionPractica />} />
                 <Route path='/estudiante/autoevaluacion/:practicaId' element={<Autoevaluacion />} />
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
+                <Route path='/estudiante/empresas' element={<EmpresasPage />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
