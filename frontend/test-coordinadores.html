@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Envío a Múltiples Coordinadores</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      color: #1565c0;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .info-box ul {
+      margin-left: 20px;
+      color: #424242;
+    }
+
+    .info-box ul li {
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .config-section {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .config-section h3 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .config-item:last-child {
+      border-bottom: none;
+    }
+
+    .config-label {
+      font-weight: 600;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .config-value {
+      font-family: 'Courier New', monospace;
+      color: #1976d2;
+      background: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .status {
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.loading {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      color: #e65100;
+    }
+
+    .status.success {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      color: #2e7d32;
+    }
+
+    .status.error {
+      background: #ffebee;
+      border-left: 4px solid #f44336;
+      color: #c62828;
+    }
+
+    .status h3 {
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .status p {
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .coordinator-list {
+      background: white;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .coordinator-item {
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .coordinator-item:last-child {
+      border-bottom: none;
+    }
+
+    .coordinator-item .icon {
+      font-size: 20px;
+    }
+
+    .coordinator-item .info {
+      flex: 1;
+    }
+
+    .coordinator-item .name {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .coordinator-item .email {
+      color: #666;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid #e0e0e0;
+    }
+
+    .stat-card .number {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+    .stat-card.success .number {
+      color: #4caf50;
+    }
+
+    .stat-card.error .number {
+      color: #f44336;
+    }
+
+    .stat-card.total .number {
+      color: #1976d2;
+    }
+
+    pre {
+      background: #263238;
+      color: #aed581;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin-top: 15px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test: Envío a Múltiples Coordinadores</h1>
+    <p class="subtitle">Prueba el envío de emails a todos los coordinadores registrados</p>
+
+    <div class="info-box">
+      <h3>📋 Información del Test</h3>
+      <ul>
+        <li><strong>Objetivo:</strong> Verificar que los emails lleguen a TODOS los coordinadores</li>
+        <li><strong>Template usado:</strong> nueva_inscripcion (inscripción de práctica)</li>
+        <li><strong>Datos simulados:</strong> Estudiante de prueba con práctica ficticia</li>
+        <li><strong>Remitente configurado:</strong> consultoriapracticas@gmail.com</li>
+      </ul>
+    </div>
+
+    <div class="config-section">
+      <h3>⚙️ Configuración Actual</h3>
+      <div class="config-item">
+        <span class="config-label">Proyecto Supabase:</span>
+        <span class="config-value">rrfygzljzxwdckksskqq</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">Edge Function:</span>
+        <span class="config-value">send-email-brevo</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">FROM_EMAIL:</span>
+        <span class="config-value">consultoriapracticas@gmail.com</span>
+      </div>
+      <div class="config-item">
+        <span class="config-label">API Brevo:</span>
+        <span class="config-value">https://api.brevo.com/v3/smtp/email</span>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="testBtn" onclick="testMultipleCoordinators()">
+        <span>📧 Enviar Email de Prueba a Todos los Coordinadores</span>
+      </button>
+      <button onclick="testConnection()" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);">
+        <span>🔍 Test: Solo Verificar Conexión y Coordinadores</span>
+      </button>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Configuración
+    const SUPABASE_URL = 'https://rrfygzljzxwdckksskqq.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZnlnemxqenh3ZGNra3Nza3FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2NzMzNDksImV4cCI6MjA3NDI0OTM0OX0.vJZrqcLY5qr88P1eOBw2WVOHkapgy0oYl5fWoTtXeSc';
+
+    // Crear cliente de Supabase
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function testConnection() {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span><span>Verificando...</span>';
+
+      showStatus('loading', '⏳ Verificando...', 'Probando conexión con Supabase y obteniendo coordinadores...');
+
+      try {
+        console.log('=== TEST DE CONEXIÓN ===');
+        console.log('SUPABASE_URL:', SUPABASE_URL);
+        console.log('ANON_KEY (primeros 20 chars):', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+
+        // Test 1: Usando Supabase Client
+        console.log('\n--- Test 1: Supabase Client ---');
+        const { data: coordsClient, error: errorClient } = await supabase
+          .from('coordinadores')
+          .select('id, email, nombre, apellido')
+          .order('nombre', { ascending: true });
+
+        console.log('Resultado Client:', { coordsClient, errorClient });
+
+        // Test 2: Usando Fetch directo
+        console.log('\n--- Test 2: Fetch Directo ---');
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/coordinadores?select=id,email,nombre,apellido&order=nombre.asc`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+        const responseText = await response.text();
+        console.log('Response body:', responseText);
+
+        let coordsFetch = null;
+        try {
+          coordsFetch = JSON.parse(responseText);
+        } catch (e) {
+          console.error('Error parseando JSON:', e);
+        }
+
+        // Mostrar resultados
+        let resultHtml = '<div style="background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">';
+        resultHtml += '<h3 style="margin-bottom: 15px;">📊 Resultados del Test</h3>';
+
+        // Test 1 Results
+        resultHtml += '<div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px;">';
+        resultHtml += '<h4 style="margin: 0 0 10px 0; color: #1976d2;">Test 1: Supabase Client</h4>';
+        if (errorClient) {
+          resultHtml += `<p style="color: #f44336; margin: 0;">❌ Error: ${errorClient.message}</p>`;
+          resultHtml += `<pre style="background: #263238; color: #aed581; padding: 10px; border-radius: 4px; font-size: 11px; overflow-x: auto; margin-top: 10px;">${JSON.stringify(errorClient, null, 2)}</pre>`;
+        } else if (coordsClient && coordsClient.length > 0) {
+          resultHtml += `<p style="color: #4caf50; margin: 0 0 10px 0;">✅ Se encontraron ${coordsClient.length} coordinadores</p>`;
+          resultHtml += '<div class="coordinator-list">';
+          coordsClient.forEach(c => {
+            resultHtml += `
+              <div class="coordinator-item">
+                <span class="icon">👤</span>
+                <div class="info">
+                  <div class="name">${c.nombre} ${c.apellido}</div>
+                  <div class="email">${c.email}</div>
+                </div>
+              </div>
+            `;
+          });
+          resultHtml += '</div>';
+        } else {
+          resultHtml += '<p style="color: #ff9800; margin: 0;">⚠️ No se encontraron coordinadores (pero sin error)</p>';
+        }
+        resultHtml += '</div>';
+
+        // Test 2 Results
+        resultHtml += '<div style="margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px;">';
+        resultHtml += '<h4 style="margin: 0 0 10px 0; color: #1976d2;">Test 2: Fetch Directo</h4>';
+        if (response.status !== 200) {
+          resultHtml += `<p style="color: #f44336; margin: 0;">❌ HTTP Status: ${response.status}</p>`;
+          resultHtml += `<pre style="background: #263238; color: #aed581; padding: 10px; border-radius: 4px; font-size: 11px; overflow-x: auto; margin-top: 10px;">${responseText}</pre>`;
+        } else if (coordsFetch && Array.isArray(coordsFetch) && coordsFetch.length > 0) {
+          resultHtml += `<p style="color: #4caf50; margin: 0 0 10px 0;">✅ Se encontraron ${coordsFetch.length} coordinadores</p>`;
+          resultHtml += '<div class="coordinator-list">';
+          coordsFetch.forEach(c => {
+            resultHtml += `
+              <div class="coordinator-item">
+                <span class="icon">👤</span>
+                <div class="info">
+                  <div class="name">${c.nombre} ${c.apellido}</div>
+                  <div class="email">${c.email}</div>
+                </div>
+              </div>
+            `;
+          });
+          resultHtml += '</div>';
+        } else {
+          resultHtml += '<p style="color: #ff9800; margin: 0;">⚠️ Respuesta vacía o no válida</p>';
+          resultHtml += `<pre style="background: #263238; color: #aed581; padding: 10px; border-radius: 4px; font-size: 11px; overflow-x: auto; margin-top: 10px;">${responseText}</pre>`;
+        }
+        resultHtml += '</div>';
+
+        resultHtml += '<p style="margin: 15px 0 0 0; padding: 10px; background: #e3f2fd; border-radius: 4px; font-size: 13px;">💡 Revisa la <strong>Consola del Navegador</strong> (F12) para más detalles</p>';
+        resultHtml += '</div>';
+
+        // Determinar si fue exitoso
+        if ((coordsClient && coordsClient.length > 0) || (coordsFetch && coordsFetch.length > 0)) {
+          showStatus('success', '✅ Conexión Exitosa', 'Se pudieron obtener los coordinadores correctamente.', resultHtml);
+        } else {
+          showStatus('error', '❌ Problema Detectado', 'No se pudieron obtener coordinadores. Revisa los detalles arriba.', resultHtml);
+        }
+
+      } catch (error) {
+        console.error('Error en test:', error);
+        showStatus('error', '❌ Error', 
+          `Error durante la prueba: ${error.message}`,
+          `<pre style="background: #263238; color: #aed581; padding: 15px; border-radius: 8px; font-size: 12px; overflow-x: auto; margin-top: 15px;">${JSON.stringify(error, null, 2)}</pre>`
+        );
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍 Test: Solo Verificar Conexión y Coordinadores</span>';
+      }
+    }
+
+    function showStatus(type, title, message, extra = '') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = `status ${type} show`;
+      statusDiv.innerHTML = `
+        <h3>${title}</h3>
+        <p>${message}</p>
+        ${extra}
+      `;
+    }
+
+    async function testMultipleCoordinators() {
+      const btn = document.getElementById('testBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span><span>Enviando emails...</span>';
+
+      showStatus('loading', '⏳ Procesando...', 'Obteniendo lista de coordinadores y enviando emails...');
+
+      try {
+        // 1. Obtener todos los coordinadores desde Supabase
+        const coordResponse = await fetch(`${SUPABASE_URL}/rest/v1/coordinadores?select=id,email,nombre,apellido`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Response status:', coordResponse.status);
+        console.log('Response headers:', Object.fromEntries(coordResponse.headers.entries()));
+
+        const responseText = await coordResponse.text();
+        console.log('Response body:', responseText);
+
+        if (!coordResponse.ok) {
+          throw new Error(`Error al obtener coordinadores: ${coordResponse.status} - ${responseText}`);
+        }
+
+        const coordinadores = JSON.parse(responseText);
+        console.log('Coordinadores obtenidos:', coordinadores);
+        
+        if (!coordinadores || coordinadores.length === 0) {
+          showStatus('error', '❌ Error', 'No se encontraron coordinadores en la base de datos.');
+          btn.disabled = false;
+          btn.innerHTML = '<span>📧 Enviar Email de Prueba a Todos los Coordinadores</span>';
+          return;
+        }
+
+        // Filtrar coordinadores con email válido
+        const coordinadoresValidos = coordinadores.filter(c => c.email && c.email.trim().length > 0);
+
+        showStatus('loading', '⏳ Enviando...', 
+          `Se encontraron ${coordinadoresValidos.length} coordinadores. Enviando emails...`,
+          `<div class="coordinator-list">
+            ${coordinadoresValidos.map(c => `
+              <div class="coordinator-item">
+                <span class="icon">👤</span>
+                <div class="info">
+                  <div class="name">${c.nombre} ${c.apellido}</div>
+                  <div class="email">${c.email}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>`
+        );
+
+        // 2. Enviar email a cada coordinador
+        const results = [];
+        
+        for (const coord of coordinadoresValidos) {
+          try {
+            const coordNombre = `${coord.nombre || ''} ${coord.apellido || ''}`.trim() || 'Coordinador';
+            
+            const emailPayload = {
+              to: coord.email,
+              subject: `📋 [TEST] Nueva Inscripción: Juan Pérez - Práctica Profesional`,
+              mensaje_html: `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+                    <tr>
+                      <td align="center">
+                        <table width="600" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                          
+                          <!-- Header -->
+                          <tr>
+                            <td style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); padding: 30px; text-align: center;">
+                              <h1 style="color: white; margin: 0; font-size: 24px;">Universidad Autónoma de Chile</h1>
+                              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Sistema de Gestión de Prácticas Profesionales</p>
+                            </td>
+                          </tr>
+
+                          <!-- Content -->
+                          <tr>
+                            <td style="padding: 40px 30px;">
+                              <h2 style="color: #1976d2; margin: 0 0 20px 0;">📋 Nueva Inscripción de Práctica [TEST]</h2>
+                              
+                              <p style="font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 20px;">
+                                Estimado/a <strong>${coordNombre}</strong>,
+                              </p>
+                              
+                              <p style="font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 20px;">
+                                Este es un <strong style="color: #ff9800;">EMAIL DE PRUEBA</strong> para verificar que el sistema 
+                                está enviando correctamente notificaciones a todos los coordinadores.
+                              </p>
+
+                              <table width="100%" cellpadding="15" style="background-color: #e3f2fd; border-radius: 6px; margin: 20px 0; border-left: 4px solid #1976d2;">
+                                <tr>
+                                  <td>
+                                    <h3 style="margin: 0 0 15px 0; color: #0d47a1;">📋 Datos de Prueba</h3>
+                                    <table width="100%" cellpadding="6">
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Estudiante:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">Juan Pérez García</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Carrera:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">Ingeniería en Informática</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Empresa:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">Empresa Test S.A.</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Tipo de Práctica:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">Práctica Profesional</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Periodo:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">01 de enero 2025 - 31 de marzo 2025</td>
+                                      </tr>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </table>
+
+                              <table width="100%" cellpadding="15" style="background-color: #fff3e0; border-radius: 6px; margin: 20px 0;">
+                                <tr>
+                                  <td style="text-align: center;">
+                                    <h3 style="margin: 0 0 10px 0; color: #e65100;">✅ Test Exitoso</h3>
+                                    <p style="margin: 0; font-size: 14px; color: #666;">
+                                      Si estás leyendo esto, significa que el sistema de envío masivo a coordinadores está funcionando correctamente.
+                                    </p>
+                                  </td>
+                                </tr>
+                              </table>
+
+                              <p style="font-size: 14px; color: #666; margin-top: 20px;">
+                                Atentamente,<br>
+                                <strong>Sistema de Gestión de Prácticas</strong><br>
+                                Universidad Autónoma de Chile
+                              </p>
+                            </td>
+                          </tr>
+
+                          <!-- Footer -->
+                          <tr>
+                            <td style="background-color: #f5f5f5; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                              <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">
+                                <strong>Universidad Autónoma de Chile</strong><br>
+                                Coordinación de Prácticas Profesionales
+                              </p>
+                              <p style="margin: 0; font-size: 11px; color: #999;">
+                                © 2025 Universidad Autónoma de Chile. Todos los derechos reservados.
+                              </p>
+                            </td>
+                          </tr>
+
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+              `
+            };
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email-brevo`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify(emailPayload)
+            });
+
+            const responseData = await response.json();
+
+            if (response.ok) {
+              results.push({ email: coord.email, status: 'success', name: coordNombre });
+            } else {
+              results.push({ email: coord.email, status: 'error', name: coordNombre, error: responseData.error || 'Unknown error' });
+            }
+
+          } catch (err) {
+            results.push({ email: coord.email, status: 'error', name: coordNombre, error: err.message });
+          }
+        }
+
+        // 3. Mostrar resultados
+        const successCount = results.filter(r => r.status === 'success').length;
+        const errorCount = results.filter(r => r.status === 'error').length;
+
+        const resultsList = results.map(r => `
+          <div class="coordinator-item">
+            <span class="icon">${r.status === 'success' ? '✅' : '❌'}</span>
+            <div class="info">
+              <div class="name">${r.name}</div>
+              <div class="email">${r.email} ${r.error ? `- ${r.error}` : ''}</div>
+            </div>
+          </div>
+        `).join('');
+
+        if (successCount === coordinadoresValidos.length) {
+          showStatus('success', '✅ ¡Éxito Total!', 
+            `Se enviaron ${successCount} emails correctamente a todos los coordinadores.`,
+            `<div class="stats">
+              <div class="stat-card total">
+                <div class="number">${coordinadoresValidos.length}</div>
+                <div class="label">Total Coordinadores</div>
+              </div>
+              <div class="stat-card success">
+                <div class="number">${successCount}</div>
+                <div class="label">Enviados</div>
+              </div>
+              <div class="stat-card error">
+                <div class="number">${errorCount}</div>
+                <div class="label">Fallidos</div>
+              </div>
+            </div>
+            <div class="coordinator-list">${resultsList}</div>`
+          );
+        } else {
+          showStatus('error', '⚠️ Envío Parcial', 
+            `Se enviaron ${successCount} de ${coordinadoresValidos.length} emails. ${errorCount} fallaron.`,
+            `<div class="stats">
+              <div class="stat-card total">
+                <div class="number">${coordinadoresValidos.length}</div>
+                <div class="label">Total Coordinadores</div>
+              </div>
+              <div class="stat-card success">
+                <div class="number">${successCount}</div>
+                <div class="label">Enviados</div>
+              </div>
+              <div class="stat-card error">
+                <div class="number">${errorCount}</div>
+                <div class="label">Fallidos</div>
+              </div>
+            </div>
+            <div class="coordinator-list">${resultsList}</div>`
+          );
+        }
+
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus('error', '❌ Error', 
+          `Ocurrió un error durante el proceso: ${error.message}`,
+          `<pre>${JSON.stringify(error, null, 2)}</pre>`
+        );
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>📧 Enviar Email de Prueba a Todos los Coordinadores</span>';
+      }
+    }
+  </script>
+</body>
+</html>
