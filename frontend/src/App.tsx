@@ -18,7 +18,11 @@ import HistorialSolicitudes from "./pages/historialSolicitudes";
 import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
 import CoordinadorPracticas from './pages/coordinadorPracticas';
 import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
-import EmpresasPage from './pages/coordinadorEmpresas';
+import CoordinadorEmpresas from './pages/coordinadorEmpresas';
+import CoordinadorCrearUsuario from './pages/coordinadorCrearUsuario';
+import CoordinadorInformesEstudiantes from './pages/coordinadorInformesEstudiantes';
+import CalificarAutoevaluacion from './pages/CalificarAutoevaluacion';
+import ListaAutoevaluaciones from './pages/ListaAutoevaluaciones';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
@@ -66,7 +70,12 @@ function App() {
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
                 <Route path='/coordinador/practicas' element={<CoordinadorPracticas />} />
                 <Route path='/coordinador/estudiantes' element={<CoordinadorEstudiantes />} />
-                <Route path='/coordinador/empresas' element={<EmpresasPage />} />
+                <Route path='/coordinador/crear-usuario' element={<CoordinadorCrearUsuario />} />
+                <Route path='/coordinador/empresas' element={<CoordinadorEmpresas />} />
+                <Route path='/coordinador/informes-estudiante' element={<CoordinadorInformesEstudiantes />} />
+                <Route path="/coordinador/evaluar-informe/:informeId" element={<CoordinadorEvaluarInforme />} />
+                <Route path='/coordinador/autoevaluaciones' element={<ListaAutoevaluaciones />} />
+                <Route path='/coordinador/calificar-autoevaluacion/:autoevaluacionId' element={<CalificarAutoevaluacion />} />
               </Route>
             </Route>
           </Routes>

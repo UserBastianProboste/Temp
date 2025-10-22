@@ -7,38 +7,17 @@ import {
   Card,
   CardActions,
   CardContent,
-  CardHeader,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Fade,
-  InputAdornment,
-  MenuItem,
-  Snackbar,
+  Chip,
+  Divider,
   Stack,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import type { AlertColor } from '@mui/material';
-import Grow from '@mui/material/Grow';
-import {
-  Business as BusinessIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Email as EmailIcon,
-  FilterAlt as FilterAltIcon,
-  FilterList as FilterListIcon,
-  LocationOn as LocationOnIcon,
-  Person as PersonIcon,
-  Phone as PhoneIcon,
-  Search as SearchIcon,
-  Work as WorkIcon,
-} from '@mui/icons-material';
+import Grid from '@mui/material/GridLegacy';
+import BusinessIcon from '@mui/icons-material/Business';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 import DashboardTemplate from '../components/DashboardTemplate';
 import { empresaService } from '../services/empresaService';
 import type { Empresa } from '../types/database';
