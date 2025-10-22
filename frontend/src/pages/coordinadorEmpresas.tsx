@@ -73,6 +73,14 @@ const emptyFormState: EmpresaFormState = {
   email: '',
 };
 
+const defaultFilters: EmpresaFilters = {
+  location: 'all',
+  user: 'all',
+  email: 'all',
+  role: 'all',
+  phone: 'all',
+};
+
 const estimateCardWeight = (empresa: Empresa) => {
   const baseWeight = 220;
   const textFields = [
@@ -129,6 +137,16 @@ const getSortableTime = (value?: string | null) => {
   return Number.isFinite(timestamp) ? timestamp : 0;
 };
 
+const normalizeText = (value: string | null | undefined) =>
+  value
+    ? value
+        .toString()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+    : '';
+
 const EmpresasPage = () => {
   const { role } = useAuth();
   const isCoordinator = role === 'coordinador';
@@ -142,13 +160,7 @@ const EmpresasPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<EmpresaFilters>({
-    location: 'all',
-    user: 'all',
-    email: 'all',
-    role: 'all',
-    phone: 'all',
-  });
+  const [filters, setFilters] = useState<EmpresaFilters>(() => ({ ...defaultFilters }));
   const [sortOption, setSortOption] = useState<SortOption>('alphabetical-asc');
 
   const [editTarget, setEditTarget] = useState<Empresa | null>(null);
@@ -277,14 +289,14 @@ const EmpresasPage = () => {
     sorted.sort((a, b) => {
       switch (sortOption) {
         case 'alphabetical-desc':
-          return compareNames(b.razon_social, a.razon_social);
+          return b.razon_social.localeCompare(a.razon_social, 'es', { sensitivity: 'base' });
         case 'creation-newest':
-          return getSortableTime(b.created_at) - getSortableTime(a.created_at);
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case 'creation-oldest':
-          return getSortableTime(a.created_at) - getSortableTime(b.created_at);
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'alphabetical-asc':
         default:
-          return compareNames(a.razon_social, b.razon_social);
+          return a.razon_social.localeCompare(b.razon_social, 'es', { sensitivity: 'base' });
       }
     });
 
@@ -327,7 +339,7 @@ const EmpresasPage = () => {
 
   const handleClearFilters = () => {
     setSearchQuery('');
-    setFilters({ location: 'all', user: 'all', email: 'all', role: 'all', phone: 'all' });
+    setFilters({ ...defaultFilters });
     setSortOption('alphabetical-asc');
   };
 
@@ -551,7 +563,7 @@ const EmpresasPage = () => {
                       fullWidth
                       label="Ubicación"
                       value={filters.location}
-                      onChange={(event) => handleFilterChange('location')(event as SelectChangeEvent<FilterValue>)}
+                      onChange={handleFilterChange('location')}
                     >
                       <MenuItem value="all">Todas</MenuItem>
                       {availableFilters.locations.map((location) => (
@@ -566,7 +578,7 @@ const EmpresasPage = () => {
                       fullWidth
                       label="Usuario"
                       value={filters.user}
-                      onChange={(event) => handleFilterChange('user')(event as SelectChangeEvent<FilterValue>)}
+                      onChange={handleFilterChange('user')}
                     >
                       <MenuItem value="all">Todos</MenuItem>
                       {availableFilters.users.map((user) => (
@@ -583,7 +595,7 @@ const EmpresasPage = () => {
                       fullWidth
                       label="Correo electrónico"
                       value={filters.email}
-                      onChange={(event) => handleFilterChange('email')(event as SelectChangeEvent<FilterValue>)}
+                      onChange={handleFilterChange('email')}
                     >
                       <MenuItem value="all">Todos</MenuItem>
                       {availableFilters.emails.map((email) => (
@@ -598,7 +610,7 @@ const EmpresasPage = () => {
                       fullWidth
                       label="Cargo de contacto"
                       value={filters.role}
-                      onChange={(event) => handleFilterChange('role')(event as SelectChangeEvent<FilterValue>)}
+                      onChange={handleFilterChange('role')}
                     >
                       <MenuItem value="all">Todos</MenuItem>
                       {availableFilters.roles.map((role) => (
@@ -615,7 +627,7 @@ const EmpresasPage = () => {
                       fullWidth
                       label="Teléfono"
                       value={filters.phone}
-                      onChange={(event) => handleFilterChange('phone')(event as SelectChangeEvent<FilterValue>)}
+                      onChange={handleFilterChange('phone')}
                     >
                       <MenuItem value="all">Todos</MenuItem>
                       {availableFilters.phones.map((phone) => (
@@ -630,7 +642,7 @@ const EmpresasPage = () => {
                       fullWidth
                       label="Ordenar por"
                       value={sortOption}
-                      onChange={(event) => handleSortChange(event as SelectChangeEvent<SortOption>)}
+                      onChange={handleSortChange}
                     >
                       <MenuItem value="alphabetical-asc">Alfabético (A-Z)</MenuItem>
                       <MenuItem value="alphabetical-desc">Alfabético (Z-A)</MenuItem>
