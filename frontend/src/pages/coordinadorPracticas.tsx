@@ -43,8 +43,6 @@ import { getEmailTemplate } from '../services/emailTemplates';
 import { useAuth } from '../hooks/useAuth';
 import { evaluacionSupervisorService } from '../services/evaluacionSupervisorService';
 
-import { enviarEmailEvaluacion } from '../services/enviarEmailEvaluacion';
-
 import type { Practica } from '../types/database';
 import { jsPDF } from 'jspdf';
 // PAGINACIÓN: cantidad de prácticas a mostrar por página

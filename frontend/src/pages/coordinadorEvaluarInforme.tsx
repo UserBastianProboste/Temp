@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { supabase } from "../services/supabaseClient"; 
 import DashboardTemplate from "../components/DashboardTemplate";
 import {
@@ -78,7 +78,6 @@ const initialState: Record<string, number> = todosCriterios.reduce(
 // --- Componente Principal de la Página ---
 const CoordinadorEvaluarInforme: React.FC = () => {
   const { informeId } = useParams<{ informeId: string }>();
-  const navigate = useNavigate();
   const [informe, setInforme] = useState<any>(null);
   const [estudiante, setEstudiante] = useState<any>(null);
   const [empresa, setEmpresa] = useState<any>(null);
