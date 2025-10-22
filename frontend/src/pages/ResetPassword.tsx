@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { Lock as LockIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../../../../consultoria_informatica/frontend/src/services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 
 const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');

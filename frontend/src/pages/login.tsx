@@ -12,7 +12,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Email, Lock } from '@mui/icons-material';
-import { useAuth } from '../../../../consultoria_informatica/frontend/src/hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');

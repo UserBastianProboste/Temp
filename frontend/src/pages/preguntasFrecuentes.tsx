@@ -1,5 +1,5 @@
 import { Box, List, ListItem, ListItemText, Typography } from '@mui/material';
-import DashboardTemplate from '../../../../consultoria_informatica/frontend/src/components/DashboardTemplate';
+import DashboardTemplate from '../components/DashboardTemplate';
 
 export default function PreguntasFrecuentes() {
   return (

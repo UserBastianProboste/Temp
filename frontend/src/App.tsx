@@ -2,26 +2,30 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { theme } from './theme/theme'; // Import nombrado, no default
-import Login from '../../../Temp/frontend/src/pages/login';
-import RegisterEstudiantes from '../../../Temp/frontend/src/pages/registerEstudiantes';
-import DashboardEstudiante from '../../../Temp/frontend/src/pages/dashboardEstudiante';
-import DashboardCoordinador from '../../../Temp/frontend/src/pages/dashboardCoordinador';
+import Login from './pages/login';
+import RegisterEstudiantes from './pages/registerEstudiantes';
+import DashboardEstudiante from './pages/dashboardEstudiante';
+import DashboardCoordinador from './pages/dashboardCoordinador';
 
 import { RouteGuard } from './components/RouteGuard';
-import SeleccionPractica from "../../../Temp/frontend/src/pages/SeleccionPractica";
-import Autoevaluacion from '../../../Temp/frontend/src/pages/autoevaluacion';
-import ForgotPassword from '../../../Temp/frontend/src/pages/ForgotPassword';
-import ResetPassword from '../../../Temp/frontend/src/pages/ResetPassword';
-import Retroalimentacion from '../../../Temp/frontend/src/pages/Retroalimentacion';
-import AdjuntarInformes from "../../../Temp/frontend/src/pages/adjuntarInformesEstudiantes";
-import HistorialSolicitudes from "../../../Temp/frontend/src/pages/historialSolicitudes";
-import PracticaProfesionalForm from '../../../Temp/frontend/src/pages/PracticaProfesionalForm';
-import CoordinadorPracticas from '../../../Temp/frontend/src/pages/coordinadorPracticas';
-import CoordinadorEstudiantes from '../../../Temp/frontend/src/pages/coordinadorEstudiantes';
-import CoordinadorEmpresas from '../../../Temp/frontend/src/pages/coordinadorEmpresas';
-import PreguntasFrecuentes from '../../../Temp/frontend/src/pages/preguntasFrecuentes';
-import EvaluacionSupervisorPublica from '../../../Temp/frontend/src/pages/EvaluacionSupervisorPublica';
-import AuthCallback from "../../../Temp/frontend/src/pages/AuthCallback";
+import SeleccionPractica from "./pages/SeleccionPractica";
+import Autoevaluacion from './pages/autoevaluacion';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Retroalimentacion from './pages/Retroalimentacion';
+import AdjuntarInformes from "./pages/adjuntarInformesEstudiantes";
+import HistorialSolicitudes from "./pages/historialSolicitudes";
+import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
+import CoordinadorPracticas from './pages/coordinadorPracticas';
+import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
+import CoordinadorEmpresas from './pages/coordinadorEmpresas';
+import CoordinadorInformesEstudiantes from './pages/coordinadorInformesEstudiantes';
+import CalificarAutoevaluacion from './pages/CalificarAutoevaluacion';
+import ListaAutoevaluaciones from './pages/ListaAutoevaluaciones';
+import PreguntasFrecuentes from './pages/preguntasFrecuentes';
+import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
+import AuthCallback from "./pages/AuthCallback";
+import CoordinadorEvaluarInforme from './pages/coordinadorEvaluarInforme';
 
 function App() {
   return (
@@ -63,6 +67,10 @@ function App() {
                 <Route path='/coordinador/practicas' element={<CoordinadorPracticas />} />
                 <Route path='/coordinador/estudiantes' element={<CoordinadorEstudiantes />} />
                 <Route path='/coordinador/empresas' element={<CoordinadorEmpresas />} />
+                <Route path='/coordinador/informes-estudiante' element={<CoordinadorInformesEstudiantes />} />
+                <Route path="/coordinador/evaluar-informe/:informeId" element={<CoordinadorEvaluarInforme />} />
+                <Route path='/coordinador/autoevaluaciones' element={<ListaAutoevaluaciones />} />
+                <Route path='/coordinador/calificar-autoevaluacion/:autoevaluacionId' element={<CalificarAutoevaluacion />} />
               </Route>
             </Route>
           </Routes>

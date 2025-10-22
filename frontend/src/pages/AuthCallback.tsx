@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../../consultoria_informatica/frontend/src/services/supabaseClient";
+import { supabase } from "../services/supabaseClient";
 import { Box, CircularProgress, Alert, Paper, Container, Typography } from "@mui/material";
 
 export default function AuthCallback() {

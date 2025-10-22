@@ -1,5 +1,5 @@
 import React from "react";
-import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
+import DashboardTemplate from "../components/DashboardTemplate";
 import { Card, CardContent } from "@mui/material";
 
 export default function HistorialSolicitudes(): React.ReactElement {

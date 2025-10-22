@@ -3,7 +3,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelIcon from "@mui/icons-material/Cancel";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
+import DashboardTemplate from "../components/DashboardTemplate";
 import {
   Box,
   Typography,
@@ -19,7 +19,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import { supabase } from "../../../../consultoria_informatica/frontend/src/services/supabaseClient";
+import { supabase } from "../services/supabaseClient";
 
 type Archivo = {
   name: string;
@@ -44,6 +44,20 @@ export default function Retroalimentacion(): React.ReactElement {
 
   const BUCKET_AVANCE = "informe_avance_practica";
   const BUCKET_FINAL = "informe_final_practica";
+
+const normalizeText = (s?: string | null) => {
+  if (!s) return "";
+  return s
+    .toString()
+    .replace(/[_\-]+/g, " ")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
+const isPractica = (s?: string | null) => {
+  const t = normalizeText(s);
+  return /practica\s*(i{1,2}|1|2)\b/.test(t);
+};
 
   useEffect(() => {
     (async () => {
@@ -85,6 +99,11 @@ export default function Retroalimentacion(): React.ReactElement {
             size: r.size ?? null,
             uploaded_at: r.uploaded_at ?? null,
           };
+
+          if (!isPractica(archivo.name) && !isPractica(archivo.path)) {
+            return; 
+          }
+
           if ((r.tipo ?? "").toString().toLowerCase().includes("avance")) {
             avanceFromDb.push(archivo);
           } else if (
@@ -143,13 +162,15 @@ export default function Retroalimentacion(): React.ReactElement {
           .from(BUCKET_AVANCE)
           .list(carpetaAvance, { limit: 200 });
         if (!errA && Array.isArray(listA) && listA.length > 0) {
-          const incoming = listA.map((f: any) => ({
-            name: f.name,
-            path: `${carpetaAvance}/${f.name}`,
-            bucket: BUCKET_AVANCE,
-            size: f.size ?? null,
-            uploaded_at: (f as any).created_at ?? null,
-          }));
+          const incoming = listA
+            .map((f: any) => ({
+              name: f.name,
+              path: `${carpetaAvance}/${f.name}`,
+              bucket: BUCKET_AVANCE,
+              size: f.size ?? null,
+              uploaded_at: (f as any).created_at ?? null,
+            }))
+            .filter((file: Archivo) => isPractica(file.name) || isPractica(file.path));
           setArchivosAvance((prev) => mergeFiles(prev, incoming));
         }
       } catch (e) {
@@ -162,13 +183,15 @@ export default function Retroalimentacion(): React.ReactElement {
           .from(BUCKET_FINAL)
           .list(carpetaFinal, { limit: 200 });
         if (!errF && Array.isArray(listF) && listF.length > 0) {
-          const incoming = listF.map((f: any) => ({
-            name: f.name,
-            path: `${carpetaFinal}/${f.name}`,
-            bucket: BUCKET_FINAL,
-            size: f.size ?? null,
-            uploaded_at: (f as any).created_at ?? null,
-          }));
+          const incoming = listF
+            .map((f: any) => ({
+              name: f.name,
+              path: `${carpetaFinal}/${f.name}`,
+              bucket: BUCKET_FINAL,
+              size: f.size ?? null,
+              uploaded_at: (f as any).created_at ?? null,
+            }))
+            .filter((file: Archivo) => isPractica(file.name) || isPractica(file.path));
           setArchivosFinal((prev) => mergeFiles(prev, incoming));
         }
       } catch (e) {

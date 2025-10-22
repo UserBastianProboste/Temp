@@ -1,5 +1,5 @@
-import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
-import CoordinatorDashboard from "../../../../consultoria_informatica/frontend/src/components/CoordinatorDashboard";
+import DashboardTemplate from "../components/DashboardTemplate";
+import CoordinatorDashboard from "../components/CoordinatorDashboard";
 
 export default function DashboardCoordinador() {
   return (

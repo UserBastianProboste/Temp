@@ -17,7 +17,6 @@ import {
   List,
   ListItem,
   ListItemButton,
-  ListItemText,
   Paper,
   Skeleton,
   Snackbar,
@@ -36,14 +35,17 @@ import SendIcon from '@mui/icons-material/Send';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
 
-import DashboardTemplate from '../../../../consultoria_informatica/frontend/src/components/DashboardTemplate';
-import { supabase } from '../../../../consultoria_informatica/frontend/src/services/supabaseClient';
-import { practicaService } from '../../../../consultoria_informatica/frontend/src/services/practicaService';
-import { evaluacionSupervisorService } from '../../../../consultoria_informatica/frontend/src/services/evaluacionSupervisorService';
+import DashboardTemplate from '../components/DashboardTemplate';
+import { supabase } from '../services/supabaseClient';
+import { practicaService } from '../services/practicaService';
+import { sendBrevoEmail } from '../services/brevoEmailService';
+import { getEmailTemplate } from '../services/emailTemplates';
+import { useAuth } from '../hooks/useAuth';
+import { evaluacionSupervisorService } from '../services/evaluacionSupervisorService';
 
+import { enviarEmailEvaluacion } from '../services/enviarEmailEvaluacion';
 
-import type { Practica } from '../../../../consultoria_informatica/frontend/src/types/database';
-import html2canvas from 'html2canvas';
+import type { Practica } from '../types/database';
 import { jsPDF } from 'jspdf';
 // PAGINACIÓN: cantidad de prácticas a mostrar por página
 const ITEMS_PER_PAGE = 10;
@@ -92,6 +94,12 @@ interface NormalizedPractice {
 
 type DecisionAction = 'aprobada' | 'rechazada';
 
+interface DecisionEmailResult {
+  emailEnviado: boolean;
+  notificacionRegistrada: boolean;
+  errores: string[];
+}
+
 const estadoChips: Record<PracticeEstado, { label: string; color: 'default' | 'warning' | 'success' | 'info' | 'error' }> = {
   pendiente: { label: 'Pendiente', color: 'warning' },
   aprobada: { label: 'Aprobada', color: 'success' },
@@ -127,8 +135,6 @@ const formatDateShort = (value: string | null | undefined) => {
 };
 
 const CoordinadorPracticas = () => {
-
-
   // Estados principales
   const [practicas, setPracticas] = useState<NormalizedPractice[]>([]);
   const [page, setPage] = useState(1);
@@ -136,31 +142,28 @@ const CoordinadorPracticas = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{ message: string; severity: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+  const [dialog, setDialog] = useState<{ open: boolean; action: DecisionAction | null }>({ open: false, action: null });
+  const [decisionLoading, setDecisionLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
   // Estados de diálogos
-  const [dialog, setDialog] = useState<{ open: boolean; action: DecisionAction | null }>({ 
-    open: false, 
-    action: null 
-  });
   const [dialogEvaluacion, setDialogEvaluacion] = useState(false);
   
-  // Estados de loading
-  const [decisionLoading, setDecisionLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  // Otros estados
   const [generandoEnlace, setGenerandoEnlace] = useState(false);
   
   // Estados de evaluación
   const [enlaceGenerado, setEnlaceGenerado] = useState<string | null>(null);
   const [evaluacionExistente, setEvaluacionExistente] = useState<any>(null);
   
-  // Estados de feedback
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
-  
   // Refs
-  const detailRef = useRef<HTMLDivElement>(null);
   const verificacionEnCurso = useRef(false);
   const ultimaPracticaVerificada = useRef<string | null>(null);
+
+  // Auth
+  const { currentUser } = useAuth();
 
   // BÚSQUEDA: filtrar solo por nombre del estudiante o por carrera
   const filteredPracticas = useMemo(() => {
@@ -363,31 +366,114 @@ const CoordinadorPracticas = () => {
 
   // OPTIMIZADO: Generar PDF
   const handleDownloadPdf = async () => {
-    if (!detailRef.current || !selectedPractice) return;
+    if (!selectedPractice) {
+      setSnackbar({ message: 'No hay práctica seleccionada para descargar.', severity: 'warning' });
+      return;
+    }
     
     setPdfLoading(true);
     
     try {
-      const canvas = await html2canvas(detailRef.current, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      
-      const nombreEstudiante = `${selectedPractice.estudiante?.nombre ?? ''}-${selectedPractice.estudiante?.apellido ?? ''}`
-        .replace(/\s+/g, '-');
-      pdf.save(`ficha-practica-${nombreEstudiante || selectedPractice.id}.pdf`);
-      
-      setSnackbar({ open: true, message: '✅ PDF descargado exitosamente' });
-    } catch {
-      setErrorMessage('No se pudo generar el PDF. Inténtalo nuevamente.');
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const margin = 16;
+      const maxWidth = doc.internal.pageSize.getWidth() - margin * 2;
+      const lineHeight = 7;
+      let cursorY = 20;
+
+      const ensureSpace = (needed = lineHeight) => {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        if (cursorY + needed > pageHeight - margin) {
+          doc.addPage();
+          cursorY = margin;
+        }
+      };
+
+      const writeText = (text: string, options?: { bold?: boolean }) => {
+        const lines = doc.splitTextToSize(text, maxWidth);
+  lines.forEach((line: string) => {
+          ensureSpace();
+          if (options?.bold) doc.setFont('helvetica', 'bold');
+          else doc.setFont('helvetica', 'normal');
+          doc.text(line, margin, cursorY);
+          cursorY += lineHeight;
+        });
+      };
+
+      const writeSection = (title: string, rows: Array<{ label: string; value: string | null | undefined }>) => {
+        ensureSpace(lineHeight * 2);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text(title, margin, cursorY);
+        cursorY += lineHeight;
+        doc.setFontSize(11);
+        rows.forEach(({ label, value }) => {
+          const display = value && value.toString().trim() !== '' ? value : '—';
+          writeText(`${label}: ${display}`);
+        });
+        cursorY += 2;
+      };
+
+      const fullName = `${selectedPractice.estudiante?.nombre ?? ''} ${selectedPractice.estudiante?.apellido ?? ''}`.trim();
+      const generatedAt = formatDateShort(new Date().toISOString());
+      const statusLabel = estadoChips[selectedPractice.estado]?.label ?? selectedPractice.estado;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('Ficha de práctica profesional', margin, cursorY);
+      cursorY += lineHeight;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      writeText(`Generado el ${generatedAt}`);
+      writeText(`Estado actual: ${statusLabel}`);
+      cursorY += 4;
+
+      writeSection('Datos del estudiante', [
+        { label: 'Nombre completo', value: fullName || '—' },
+        { label: 'Carrera', value: selectedPractice.estudiante?.carrera ?? '—' },
+        { label: 'Correo', value: selectedPractice.estudiante?.email ?? '—' },
+        { label: 'Teléfono', value: selectedPractice.estudiante?.telefono ?? '—' }
+      ]);
+
+      writeSection('Datos de la empresa', [
+        { label: 'Razón social', value: selectedPractice.empresa?.razon_social ?? '—' },
+        { label: 'Dirección', value: selectedPractice.empresa?.direccion ?? '—' },
+        { label: 'Jefe directo', value: selectedPractice.empresa?.jefe_directo ?? '—' },
+        { label: 'Cargo del jefe', value: selectedPractice.empresa?.cargo_jefe ?? '—' },
+        { label: 'Teléfono empresa', value: selectedPractice.empresa?.telefono ?? '—' },
+        { label: 'Correo empresa', value: selectedPractice.empresa?.email ?? '—' }
+      ]);
+
+      writeSection('Detalle de la práctica', [
+        { label: 'Tipo de práctica', value: selectedPractice.tipo_practica },
+        { label: 'Fecha de inicio', value: formatDate(selectedPractice.fecha_inicio) },
+        { label: 'Fecha de término', value: formatDate(selectedPractice.fecha_termino) },
+        { label: 'Horario', value: selectedPractice.horario_trabajo || '—' },
+        { label: 'Colación', value: selectedPractice.colacion || '—' },
+        { label: 'Departamento', value: selectedPractice.departamento || '—' },
+        { label: 'Cargo a desarrollar', value: selectedPractice.cargo_por_desarrollar || '—' }
+      ]);
+
+      writeSection('Actividades declaradas', [
+        { label: 'Descripción', value: selectedPractice.actividades || 'Sin actividades registradas.' }
+      ]);
+
+      writeSection('Firmas y documentación', [
+        { label: 'Fecha de firma del alumno', value: formatDate(selectedPractice.fecha_firma ?? undefined) },
+        { label: 'Firma del alumno', value: selectedPractice.firma_alumno ?? '—' }
+      ]);
+
+      const filename = `ficha-practica-${(fullName || selectedPractice.id).replace(/[^a-zA-Z0-9_-]+/g, '-')}.pdf`;
+      doc.save(filename.toLowerCase());
+      setSnackbar({ message: 'Ficha descargada correctamente.', severity: 'success' });
+    } catch (error) {
+      console.error('Error generando PDF', error);
+      setSnackbar({ message: 'No se pudo generar el PDF. Inténtalo nuevamente.', severity: 'error' });
     } finally {
       setPdfLoading(false);
     }
   };
 
-  // OPTIMIZADO: Generar enlace de evaluación
+  // Generar enlace de evaluación
   const handleGenerarEnlaceEvaluacion = async () => {
     if (!selectedPractice) return;
 
@@ -438,13 +524,13 @@ const CoordinadorPracticas = () => {
     }
   };
 
-  // OPTIMIZADO: Copiar enlace (sin alert)
+  // Copiar enlace (sin alert)
   const handleCopiarEnlace = async () => {
     if (!enlaceGenerado) return;
 
     try {
       await navigator.clipboard.writeText(enlaceGenerado);
-      setSnackbar({ open: true, message: '✅ Enlace copiado al portapapeles' });
+      setSnackbar({ message: 'Enlace copiado al portapapeles', severity: 'success' });
     } catch {
       // Fallback para navegadores antiguos
       const textarea = document.createElement('textarea');
@@ -455,63 +541,233 @@ const CoordinadorPracticas = () => {
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      setSnackbar({ open: true, message: '✅ Enlace copiado al portapapeles' });
+      setSnackbar({ message: 'Enlace copiado al portapapeles', severity: 'success' });
     }
   };
 
-  // Enviar email (placeholder)
-  const handleEnviarEnlacePorEmail = () => {
-    if (!selectedPractice?.empresa?.email) return;
+  // Enviar email con enlace de evaluación
+  const handleEnviarEnlacePorEmail = async () => {
+    if (!selectedPractice?.empresa?.email || !enlaceGenerado) {
+      setSnackbar({ 
+        message: 'No se puede enviar: falta email o enlace',
+        severity: 'error'
+      });
+      return;
+    }
     
-    // TODO: Implementar Edge Function
-    setSnackbar({ 
-      open: true, 
-      message: `📧 Email preparado para: ${selectedPractice.empresa.email}` 
-    });
-    setDialogEvaluacion(false);
+    try {
+      // Obtener nombre del coordinador
+      const metadataFullName = (currentUser?.user_metadata?.full_name as string | undefined)?.trim();
+      const metadataNameParts = `${currentUser?.user_metadata?.name ?? ''} ${currentUser?.user_metadata?.last_name ?? ''}`.trim();
+      const coordinatorName = metadataFullName || metadataNameParts || 'Coordinación de Prácticas';
+      
+      const estudianteNombre = selectedPractice.estudiante?.nombre ?? '';
+      const estudianteApellido = selectedPractice.estudiante?.apellido ?? '';
+      const nombreCompleto = `${estudianteNombre} ${estudianteApellido}`.trim() || 'Estudiante';
+      
+      // Preparar email con plantilla profesional
+      const emailData = getEmailTemplate('generico', {
+        subject: '📋 Solicitud de Evaluación de Práctica Profesional',
+        mensaje_html: `
+          <h2 style="color: #1976d2;">📋 Evaluación de Práctica Profesional</h2>
+          
+          <p style="font-size: 15px; line-height: 1.6;">
+            Estimado/a Supervisor/a de <strong>${selectedPractice.empresa?.razon_social || 'la empresa'}</strong>,
+          </p>
+          
+          <p style="font-size: 15px; line-height: 1.6;">
+            Le solicitamos completar la evaluación de práctica profesional del estudiante <strong>${nombreCompleto}</strong> 
+            de la Universidad Autónoma de Chile.
+          </p>
+          
+          <table width="100%" cellpadding="15" style="background-color: #e3f2fd; border-radius: 6px; margin: 20px 0; border-left: 4px solid #1976d2;">
+            <tr>
+              <td>
+                <h3 style="margin: 0 0 15px 0; color: #0d47a1;">📋 Datos del Estudiante</h3>
+                <table width="100%" cellpadding="6">
+                  <tr>
+                    <td style="color: #0d47a1; font-size: 14px;"><strong>Nombre:</strong></td>
+                    <td style="color: #1565c0; font-size: 14px;">${nombreCompleto}</td>
+                  </tr>
+                  ${selectedPractice.estudiante?.carrera ? `
+                  <tr>
+                    <td style="color: #0d47a1; font-size: 14px;"><strong>Carrera:</strong></td>
+                    <td style="color: #1565c0; font-size: 14px;">${selectedPractice.estudiante.carrera}</td>
+                  </tr>
+                  ` : ''}
+                  <tr>
+                    <td style="color: #0d47a1; font-size: 14px;"><strong>Tipo de Práctica:</strong></td>
+                    <td style="color: #1565c0; font-size: 14px;">${selectedPractice.tipo_practica}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #0d47a1; font-size: 14px;"><strong>Cargo:</strong></td>
+                    <td style="color: #1565c0; font-size: 14px;">${selectedPractice.cargo_por_desarrollar || 'No especificado'}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #0d47a1; font-size: 14px;"><strong>Periodo:</strong></td>
+                    <td style="color: #1565c0; font-size: 14px;">${formatDateShort(selectedPractice.fecha_inicio)} - ${formatDateShort(selectedPractice.fecha_termino)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+          
+          <table width="100%" cellpadding="20" style="background-color: #fff3e0; border-radius: 6px; margin: 20px 0;">
+            <tr>
+              <td style="text-align: center;">
+                <h3 style="margin: 0 0 15px 0; color: #e65100;">🔗 Enlace de Evaluación</h3>
+                <p style="margin: 0 0 15px 0; font-size: 14px; color: #666;">
+                  Por favor, haga clic en el siguiente botón para acceder al formulario de evaluación:
+                </p>
+                <a href="${enlaceGenerado}" 
+                   style="display: inline-block; 
+                          background-color: #1976d2; 
+                          color: white; 
+                          padding: 12px 30px; 
+                          text-decoration: none; 
+                          border-radius: 5px; 
+                          font-weight: bold;
+                          font-size: 16px;">
+                  Completar Evaluación
+                </a>
+                <p style="margin: 15px 0 0 0; font-size: 12px; color: #999;">
+                  O copie este enlace en su navegador:<br>
+                  <span style="font-family: monospace; font-size: 11px; color: #666;">${enlaceGenerado}</span>
+                </p>
+              </td>
+            </tr>
+          </table>
+          
+          <table width="100%" cellpadding="15" style="background-color: #f9f9f9; border-radius: 6px; margin: 20px 0;">
+            <tr>
+              <td>
+                <h4 style="margin: 0 0 10px 0; color: #333;">⏱️ Importante:</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+                  <li>El formulario le tomará aproximadamente 5-10 minutos</li>
+                  <li>La evaluación es fundamental para el proceso académico del estudiante</li>
+                  <li>Sus respuestas son confidenciales</li>
+                  <li>Si tiene alguna consulta, puede contactarnos</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+          
+          <p style="font-size: 15px; line-height  estado?: string;
+: 1.6; margin-top: 20px;">
+            Agradecemos su colaboración en la formación profesional de nuestros estudiantes.
+          </p>
+          
+          <p style="font-size: 14px; color: #666;">
+            Atentamente,<br>
+            <strong>${coordinatorName}</strong><br>
+            Coordinación de Prácticas Profesionales<br>
+            Universidad Autónoma de Chile
+          </p>
+        `
+      });
+      
+      // Enviar email
+      await sendBrevoEmail({
+        to: selectedPractice.empresa.email,
+        subject: emailData.subject,
+        mensaje_html: emailData.html
+      });
+      
+      setSnackbar({ 
+        message: `✅ Email enviado a: ${selectedPractice.empresa.email}`,
+        severity: 'success'
+      });
+      setDialogEvaluacion(false);
+      
+    } catch (error) {
+      console.error('Error enviando email:', error);
+      setSnackbar({ 
+        message: `❌ Error al enviar email: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        severity: 'error'
+      });
+    }
   };
 
-  // OPTIMIZADO: Enviar email de decisión
-  const sendDecisionEmail = async (practice: NormalizedPractice, action: DecisionAction) => {
+  // Enviar email de decisión
+  const sendDecisionEmail = async (practice: NormalizedPractice, action: DecisionAction): Promise<DecisionEmailResult> => {
     const destinatario = practice.estudiante?.email;
-    if (!destinatario) return;
+    if (!destinatario) {
+      return { emailEnviado: false, notificacionRegistrada: false, errores: ['sin-correo'] };
+    }
+
+    const metadataFullName = (currentUser?.user_metadata?.full_name as string | undefined)?.trim();
+    const metadataNameParts = `${currentUser?.user_metadata?.name ?? ''} ${currentUser?.user_metadata?.last_name ?? ''}`.trim();
+    const coordinatorName = metadataFullName || metadataNameParts || 'Coordinación de Prácticas';
+
+    const estudianteNombre = practice.estudiante?.nombre ?? '';
+    const estudianteApellido = practice.estudiante?.apellido ?? '';
+    const estadoLabel = action === 'aprobada' ? 'aprobada' : 'rechazada';
+
+    // Usar plantilla profesional mejorada
+    const emailData = getEmailTemplate('cambio_estado', {
+      coordinator_name: coordinatorName,
+      estudiante_nombre: estudianteNombre,
+      estudiante_apellido: estudianteApellido,
+      tipo_practica: practice.tipo_practica,
+      practica_id: practice.id,
+      empresa: practice.empresa?.razon_social ?? '',
+      fecha_inicio: practice.fecha_inicio,
+      fecha_termino: practice.fecha_termino,
+      estado: estadoLabel,
+    });
 
     const payload = {
       to: destinatario,
-      action,
-      estudiante_nombre: `${practice.estudiante?.nombre ?? ''} ${practice.estudiante?.apellido ?? ''}`.trim(),
+      subject: emailData.subject,
+      coordinator_name: coordinatorName,
+      estudiante_nombre: estudianteNombre,
+      estudiante_apellido: estudianteApellido,
       tipo_practica: practice.tipo_practica,
+      practica_id: practice.id,
       empresa: practice.empresa?.razon_social ?? '',
       fecha_inicio: practice.fecha_inicio,
-      fecha_termino: practice.fecha_termino
+      fecha_termino: practice.fecha_termino,
+      estado: estadoLabel,
+      mensaje_html: emailData.html
     };
 
-    // Intentar con Edge Function
-    if (typeof supabase.functions?.invoke === 'function') {
+    let enviado = false;
+    const errores: string[] = [];
+    let notificacionRegistrada = false;
+
+    try {
+      await sendBrevoEmail(payload);
+      enviado = true;
+    } catch (error) {
+      console.warn('Fallo envío vía función', error);
+      errores.push('function:' + (error instanceof Error ? error.message : String(error)));
+    }
+
+    if (!enviado) {
       try {
-        await supabase.functions.invoke('send-email-brevo', {
-          body: JSON.stringify({ 
-            ...payload, 
-            template: action === 'aprobada' ? 'practica_aprobada' : 'practica_rechazada' 
-          })
-        });
-        return;
-      } catch {
-        // Continuar con fallback
+        const detallePrevio = errores.length > 0 ? errores.join('; ') : null;
+        const { error: insercionError } = await supabase.from('notificaciones').insert([{
+          practica_id: practice.id,
+          destinatario,
+          asunto: emailData.subject,
+          cuerpo: payload,
+          estado: 'pendiente',
+          error: detallePrevio
+        }]);
+
+        if (insercionError) {
+          errores.push('insert:' + insercionError.message);
+          throw insercionError;
+        }
+
+        notificacionRegistrada = true;
+      } catch (error) {
+        console.warn('Fallo registro notificación', error);
+        errores.push('insert:' + (error instanceof Error ? error.message : String(error)));
       }
     }
 
-    // Fallback: guardar en notificaciones
-    try {
-      await supabase.from('notificaciones').insert([{
-        to: destinatario,
-        subject: `Estado ficha práctica - ${practice.tipo_practica}`,
-        body: JSON.stringify(payload),
-        created_at: new Date().toISOString()
-      }]);
-    } catch {
-      // Silencioso
-    }
+    return { emailEnviado: enviado, notificacionRegistrada, errores };
   };
 
   // OPTIMIZADO: Manejar decisión
@@ -531,21 +787,52 @@ const CoordinadorPracticas = () => {
       };
 
       setPracticas((prev) => prev.map((p) => (p.id === updatedPractice.id ? updatedPractice : p)));
-      
-      // Enviar email en background
-      sendDecisionEmail(updatedPractice, action);
-      
-      setSnackbar({ 
-        open: true, 
-        message: `Práctica ${action === 'aprobada' ? 'aprobada' : 'rechazada'} exitosamente` 
-      });
-    } catch {
-      setErrorMessage('No se pudo actualizar el estado. Intenta nuevamente.');
+
+  const resultadoNotificacion = await sendDecisionEmail(updatedPractice, action);
+
+      const baseMessage =
+        action === 'aprobada'
+          ? 'Ficha aprobada correctamente.'
+          : 'Ficha rechazada correctamente.';
+
+      let message = baseMessage;
+      let severity: 'success' | 'warning' | 'error' = 'success';
+  const detalleTecnico = (resultadoNotificacion?.errores ?? []).join(' | ');
+
+      if (resultadoNotificacion.emailEnviado) {
+        message += ' Se notificó al estudiante por correo electrónico.';
+      } else if (resultadoNotificacion.notificacionRegistrada) {
+        message +=
+          ' No se pudo enviar el correo, pero se registró en la bandeja de notificaciones para seguimiento manual.';
+        severity = 'warning';
+        if (detalleTecnico) {
+          message += ` Detalle técnico: ${detalleTecnico}.`;
+        }
+      } else {
+        if (!resultadoNotificacion.errores.includes('sin-correo')) {
+          message += ' No se logró notificar al estudiante. Por favor avisa manualmente.';
+          severity = 'error';
+          if (detalleTecnico) {
+            message += ` Detalle técnico: ${detalleTecnico}.`;
+          }
+        } else {
+          message += ' El estudiante no tiene correo registrado en la ficha.';
+          severity = 'warning';
+        }
+      }
+
+      setSnackbar({ message, severity });
+    } catch (error) {
+      console.error('Error actualizando estado de práctica', error);
+      setSnackbar({ message: 'No se pudo actualizar el estado. Intenta nuevamente.', severity: 'error' });
     } finally {
       setDecisionLoading(false);
       setDialog({ open: false, action: null });
     }
   };
+
+  // Cierre de snackbar
+  const handleSnackbarClose = () => setSnackbar(null);
 
   // ===== RENDER FUNCTIONS =====
 
@@ -597,52 +884,75 @@ const CoordinadorPracticas = () => {
               sx={{
                 alignItems: 'flex-start',
                 borderRadius: 2,
-                border: (theme) => `1px solid ${isActive ? theme.palette.primary.main : theme.palette.divider}`,
-                backgroundColor: isActive ? 'primary.main' : 'background.paper',
-                color: isActive ? 'primary.contrastText' : 'inherit'
+                border: (theme) => `2px solid ${isActive ? theme.palette.primary.main : theme.palette.divider}`,
+                backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'background.paper',
+                '&:hover': {
+                  backgroundColor: isActive ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                },
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.12)',
+                  }
+                }
               }}
             >
-              <ListItemText
-                primary={
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                    <Typography variant="subtitle1" fontWeight={600} sx={{ flex: 1 }}>
-                      {`${practice.estudiante?.nombre ?? 'Estudiante'} ${practice.estudiante?.apellido ?? ''}`.trim() || 'Sin nombre'}
-                    </Typography>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
+              <Stack sx={{ width: '100%' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                  <Typography 
+                    variant="subtitle1" 
+                    fontWeight={600} 
+                    sx={{ 
+                      flex: 1,
+                      color: isActive ? 'primary.main' : 'inherit'
+                    }}
+                  >
+                    {`${practice.estudiante?.nombre ?? 'Estudiante'} ${practice.estudiante?.apellido ?? ''}`.trim() || 'Sin nombre'}
+                  </Typography>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                    <Chip
+                      size="small"
+                      color={chip.color}
+                      label={chip.label}
+                      sx={{
+                        fontWeight: 600,
+                        textTransform: 'uppercase'
+                      }}
+                    />
+                    {evaluacionRespondida && (
                       <Chip
                         size="small"
-                        color={chip.color}
-                        label={chip.label}
-                        sx={{
-                          fontWeight: 600,
-                          textTransform: 'uppercase',
-                          backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : undefined,
-                          color: isActive ? 'primary.contrastText' : undefined
-                        }}
+                        icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                        label="Evaluado"
+                        color="success"
+                        sx={{ fontWeight: 600, fontSize: '0.7rem' }}
                       />
-                      {evaluacionRespondida && (
-                        <Chip
-                          size="small"
-                          icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-                          label="Evaluado"
-                          color="success"
-                          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
-                        />
-                      )}
-                    </Stack>
+                    )}
                   </Stack>
-                }
-                secondary={
-                  <Stack spacing={0.5} sx={{ mt: 1 }}>
-                    <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                      {practice.tipo_practica}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.75 }}>
-                      Enviada el {formatDateShort(practice.created_at)}
-                    </Typography>
-                  </Stack>
-                }
-              />
+                </Stack>
+                <Stack spacing={0.5} sx={{ mt: 1 }}>
+                  <Typography 
+                    variant="body2" 
+                    component="span" 
+                    sx={{ 
+                      display: 'block',
+                      color: 'text.secondary'
+                    }}
+                  >
+                    {practice.tipo_practica}
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    component="span" 
+                    sx={{ 
+                      display: 'block',
+                      color: 'text.secondary'
+                    }}
+                  >
+                    Enviada el {formatDateShort(practice.created_at)}
+                  </Typography>
+                </Stack>
+              </Stack>
             </ListItemButton>
           </ListItem>
         );
@@ -723,13 +1033,8 @@ const CoordinadorPracticas = () => {
 
     return (
       <Stack spacing={3}>
-        <Paper variant="outlined" sx={{ p: 3 }} ref={detailRef}>
-          <Stack 
-            direction={{ xs: 'column', md: 'row' }} 
-            justifyContent="space-between" 
-            alignItems={{ xs: 'flex-start', md: 'center' }} 
-            spacing={2}
-          >
+  <Paper variant="outlined" sx={{ p: 3 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2}>
             <Box>
               <Typography variant="h5" component="h2" fontWeight={700}>
                 {`${selectedPractice.estudiante?.nombre ?? 'Sin'} ${selectedPractice.estudiante?.apellido ?? 'nombre'}`.trim()}
@@ -1013,13 +1318,15 @@ const CoordinadorPracticas = () => {
             {evaluacionExistente?.respondido ? (
               <Alert severity="success">
                 <Typography variant="body2" fontWeight={600} gutterBottom>
-                  Evaluación completada
+                  ✅ Evaluación completada
                 </Typography>
                 <Typography variant="caption" display="block" sx={{ mb: 1 }}>
                   Respondida el {new Date(evaluacionExistente.fecha_respuesta).toLocaleDateString('es-CL', {
                     year: 'numeric',
                     month: 'long',
-                    day: 'numeric'
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                   })}
                 </Typography>
                 <Divider sx={{ my: 1 }} />
@@ -1036,23 +1343,44 @@ const CoordinadorPracticas = () => {
                 </Box>
               </Alert>
             ) : (
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Box 
-                  sx={{ 
-                    width: 10, 
-                    height: 10, 
-                    borderRadius: '50%', 
-                    bgcolor: 'warning.main',
-                    animation: 'pulse 2s infinite',
-                    '@keyframes pulse': {
-                      '0%, 100%': { opacity: 1 },
-                      '50%': { opacity: 0.5 }
-                    }
-                  }} 
-                />
-                <Typography variant="caption" color="text.secondary">
-                  Estado: <strong style={{ color: '#ed6c02' }}>Pendiente de respuesta</strong>
-                </Typography>
+              <Stack spacing={1.5}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Box 
+                    sx={{ 
+                      width: 10, 
+                      height: 10, 
+                      borderRadius: '50%', 
+                      bgcolor: 'warning.main',
+                      animation: 'pulse 2s infinite',
+                      '@keyframes pulse': {
+                        '0%, 100%': { opacity: 1 },
+                        '50%': { opacity: 0.5 }
+                      }
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Estado: <strong style={{ color: '#ed6c02' }}>Pendiente de respuesta</strong>
+                  </Typography>
+                </Stack>
+                
+                {evaluacionExistente?.email_enviado && evaluacionExistente?.fecha_envio_email && (
+                  <Alert severity="info">
+                    <Box>
+                      <Typography variant="caption" fontWeight={600}>
+                        Email enviado el {new Date(evaluacionExistente.fecha_envio_email).toLocaleDateString('es-CL', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </Typography>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                        Destinatario: {evaluacionExistente.email_supervisor}
+                      </Typography>
+                    </Box>
+                  </Alert>
+                )}
               </Stack>
             )}
           </Stack>
@@ -1085,13 +1413,13 @@ const CoordinadorPracticas = () => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        message={snackbar.message}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      {snackbar && (
+        <Snackbar open autoHideDuration={4000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+          <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      )}
     </DashboardTemplate>
   );
 };
