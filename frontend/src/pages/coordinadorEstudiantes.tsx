@@ -12,6 +12,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   InputAdornment,
   MenuItem,
   Pagination,
@@ -779,6 +780,10 @@ const CoordinadorEstudiantes = () => {
   };
 
   const totalActivos = students.filter(student => !student.blocked).length;
+  const totalFaltantes = useMemo(
+    () => filteredStudents.filter(student => !isStudentComplete(student)).length,
+    [filteredStudents],
+  );
 
   return (
     <DashboardTemplate title="Estudiantes">
@@ -898,6 +903,7 @@ const CoordinadorEstudiantes = () => {
                 <Chip label={`Total estudiantes: ${students.length}`} color="primary" variant="outlined" />
                 <Chip label={`Activos: ${totalActivos}`} color="success" variant="outlined" />
                 <Chip label={`Resultados: ${filteredStudents.length}`} color="info" variant="outlined" />
+                <Chip label={`Faltantes: ${totalFaltantes}`} color="warning" variant="outlined" />
               </Stack>
             </Stack>
           </CardContent>
@@ -1076,15 +1082,23 @@ const CoordinadorEstudiantes = () => {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell align="center" sx={{ ...TABLE_COLUMN_STYLES.acciones, verticalAlign: 'middle' }}>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<EditIcon />}
-                            onClick={() => openEdit(student)}
-                          >
-                            Editar
-                          </Button>
+                        <TableCell
+                          align="center"
+                          sx={{
+                            ...TABLE_COLUMN_STYLES.acciones,
+                            verticalAlign: 'middle',
+                            py: 1,
+                          }}
+                        >
+                          <Tooltip title="Editar estudiante">
+                            <IconButton
+                              color="primary"
+                              size="small"
+                              onClick={() => openEdit(student)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );
