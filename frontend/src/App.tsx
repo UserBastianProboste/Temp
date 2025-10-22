@@ -26,6 +26,7 @@ import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
 import CoordinadorEvaluarInforme from './pages/coordinadorEvaluarInforme';
+import EstudianteEmpresas from './pages/estudianteEmpresas';
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
+                <Route path="/estudiante/empresas" element={<EstudianteEmpresas />} />
               </Route>
 
               {/* Rutas para el rol de coordinador */}
