@@ -18,7 +18,7 @@ import HistorialSolicitudes from "./pages/historialSolicitudes";
 import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
 import CoordinadorPracticas from './pages/coordinadorPracticas';
 import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
-import CoordinadorEmpresas from './pages/coordinadorEmpresas';
+import EmpresasPage from './pages/coordinadorEmpresas';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
@@ -55,6 +55,7 @@ function App() {
                 <Route path='/estudiante/seleccion-practica' element={<SeleccionPractica />} />
                 <Route path='/estudiante/autoevaluacion/:practicaId' element={<Autoevaluacion />} />
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
+                <Route path='/estudiante/empresas' element={<EmpresasPage />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
@@ -65,7 +66,7 @@ function App() {
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
                 <Route path='/coordinador/practicas' element={<CoordinadorPracticas />} />
                 <Route path='/coordinador/estudiantes' element={<CoordinadorEstudiantes />} />
-                <Route path='/coordinador/empresas' element={<CoordinadorEmpresas />} />
+                <Route path='/coordinador/empresas' element={<EmpresasPage />} />
               </Route>
             </Route>
           </Routes>
