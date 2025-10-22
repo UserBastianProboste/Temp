@@ -86,7 +86,6 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     { label: 'Inicio', icon: <DashboardIcon />, to: '/estudiante/dashboard' },
     { label: 'Autoevaluación', icon: <AssignmentIcon />, to: '/estudiante/autoevaluacion' },
     { label: 'Ficha de práctica', icon: <DescriptionIcon />, to: '/estudiante/fichapractica' },
-    { label: 'Empresas', icon: <BusinessIcon />, to: '/estudiante/empresas' },
     { label: 'Adjuntar informes', icon: <UploadIcon />, to: '/estudiante/adjuntar_informes' },
     { label: 'Retroalimentación', icon: <FeedbackIcon />, to: '/estudiante/retroalimentacion' },
     { label: 'Historial de solicitudes', icon: <DescriptionIcon />, to: '/historial_solicitudes' }
@@ -99,6 +98,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     { label: 'Crear usuario', icon: <PersonAddIcon />, to: '/coordinador/crear-usuario' },
     { label: 'Informes de Estudiantes', icon: <FoldertIcon />, to: '/coordinador/informes-estudiante' },
     { label: 'Empresas', icon: <BusinessIcon />, to: '/coordinador/empresas' },
+    { label: 'Autoevaluaciones', icon: <FeedbackIcon />, to: '/coordinador/autoevaluaciones' },
     { label: 'Historial de solicitudes', icon: <DescriptionIcon />, to: '/historial_solicitudes' }
   ]), []);
 
@@ -360,9 +360,11 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
                 </MenuItem>
                 <Divider sx={{ my: 0.5 }} />
                 <MenuItem
-                    component={RouterLink}
-                    to="/perfil"
-                    onClick={handleCloseUserMenu}
+                    onClick={() => {
+                      handleCloseUserMenu();
+                      const homePath = resolvedRole === 'coordinador' ? '/coordinador/dashboard' : '/estudiante/dashboard';
+                      navigate(homePath);
+                    }}
                 >
                   <ListItemIcon>
                     <SettingsIcon fontSize="small" />

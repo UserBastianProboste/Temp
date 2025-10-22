@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test: Registro de Práctica → Emails a Coordinadores</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 900px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 15px;
+      margin-bottom: 25px;
+      border-radius: 4px;
+    }
+
+    .info-box h3 {
+      color: #1565c0;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .info-box ul {
+      margin-left: 20px;
+      color: #424242;
+    }
+
+    .info-box ul li {
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .form-section {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .form-section h3 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1976d2;
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .status {
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.loading {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      color: #e65100;
+    }
+
+    .status.success {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      color: #2e7d32;
+    }
+
+    .status.error {
+      background: #ffebee;
+      border-left: 4px solid #f44336;
+      color: #c62828;
+    }
+
+    .status h3 {
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .status p {
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .coordinator-list {
+      background: white;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .coordinator-item {
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .coordinator-item:last-child {
+      border-bottom: none;
+    }
+
+    .coordinator-item .icon {
+      font-size: 20px;
+    }
+
+    .coordinator-item .info {
+      flex: 1;
+    }
+
+    .coordinator-item .name {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .coordinator-item .email {
+      color: #666;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid #e0e0e0;
+    }
+
+    .stat-card .number {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+    .stat-card.success .number {
+      color: #4caf50;
+    }
+
+    .stat-card.error .number {
+      color: #f44336;
+    }
+
+    .stat-card.total .number {
+      color: #1976d2;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    pre {
+      background: #263238;
+      color: #aed581;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test: Registro de Práctica Profesional</h1>
+    <p class="subtitle">Simula el registro de una práctica y verifica que lleguen emails a los coordinadores</p>
+
+    <div class="info-box">
+      <h3>📋 ¿Qué hace este test?</h3>
+      <ul>
+        <li><strong>Obtiene:</strong> Lista de coordinadores desde la base de datos</li>
+        <li><strong>Simula:</strong> Registro de práctica profesional por un estudiante</li>
+        <li><strong>Envía:</strong> Email personalizado a CADA coordinador</li>
+        <li><strong>Reporta:</strong> Estadísticas de éxito/error por coordinador</li>
+      </ul>
+    </div>
+
+    <div class="form-section">
+      <h3>📝 Datos de la Práctica de Prueba</h3>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre Estudiante:</label>
+          <input type="text" id="estudianteNombre" value="Juan" />
+        </div>
+        <div class="form-group">
+          <label>Apellido Estudiante:</label>
+          <input type="text" id="estudianteApellido" value="Pérez García" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Carrera:</label>
+          <input type="text" id="carrera" value="Ingeniería en Informática" />
+        </div>
+        <div class="form-group">
+          <label>Email Estudiante:</label>
+          <input type="email" id="estudianteEmail" value="juan.perez@estudiante.cl" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Empresa:</label>
+        <input type="text" id="empresa" value="Empresa Test S.A." />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tipo de Práctica:</label>
+          <select id="tipoPractica">
+            <option value="Práctica Profesional">Práctica Profesional</option>
+            <option value="Práctica Laboral">Práctica Laboral</option>
+            <option value="Práctica Inicial">Práctica Inicial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cargo:</label>
+          <input type="text" id="cargo" value="Desarrollador Junior" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha Inicio:</label>
+          <input type="date" id="fechaInicio" value="2025-01-15" />
+        </div>
+        <div class="form-group">
+          <label>Fecha Término:</label>
+          <input type="date" id="fechaTermino" value="2025-04-15" />
+        </div>
+      </div>
+    </div>
+
+    <button id="testBtn" onclick="testRegistroPractica()">
+      <span>📧 Simular Registro y Enviar Emails a Coordinadores</span>
+    </button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Configuración
+    const SUPABASE_URL = 'https://rrfygzljzxwdckksskqq.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZnlnemxqenh3ZGNra3Nza3FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2NzMzNDksImV4cCI6MjA3NDI0OTM0OX0.vJZrqcLY5qr88P1eOBw2WVOHkapgy0oYl5fWoTtXeSc';
+
+    // Crear cliente de Supabase
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function showStatus(type, title, message, extra = '') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = `status ${type} show`;
+      statusDiv.innerHTML = `
+        <h3>${title}</h3>
+        <p>${message}</p>
+        ${extra}
+      `;
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('es-CL', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+    }
+
+    async function testRegistroPractica() {
+      const btn = document.getElementById('testBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span><span>Procesando...</span>';
+
+      // Obtener datos del formulario
+      const estudianteNombre = document.getElementById('estudianteNombre').value;
+      const estudianteApellido = document.getElementById('estudianteApellido').value;
+      const carrera = document.getElementById('carrera').value;
+      const estudianteEmail = document.getElementById('estudianteEmail').value;
+      const empresa = document.getElementById('empresa').value;
+      const tipoPractica = document.getElementById('tipoPractica').value;
+      const cargo = document.getElementById('cargo').value;
+      const fechaInicio = document.getElementById('fechaInicio').value;
+      const fechaTermino = document.getElementById('fechaTermino').value;
+
+      showStatus('loading', '⏳ Paso 1/3: Obteniendo coordinadores...', 'Consultando base de datos...');
+
+      try {
+        // 1. Obtener coordinadores
+        const { data: coordinadores, error: coordError } = await supabase
+          .from('coordinadores')
+          .select('id, email, nombre, apellido')
+          .order('nombre', { ascending: true });
+
+        if (coordError) {
+          throw new Error(`Error al obtener coordinadores: ${coordError.message}`);
+        }
+
+        if (!coordinadores || coordinadores.length === 0) {
+          showStatus('error', '❌ Error', 'No se encontraron coordinadores en la base de datos.');
+          btn.disabled = false;
+          btn.innerHTML = '<span>📧 Simular Registro y Enviar Emails a Coordinadores</span>';
+          return;
+        }
+
+        // Filtrar coordinadores con email válido
+        const coordinadoresValidos = coordinadores.filter(c => c.email && c.email.trim().length > 0);
+
+        showStatus('loading', `⏳ Paso 2/3: Enviando a ${coordinadoresValidos.length} coordinadores...`, 
+          'Preparando emails personalizados...',
+          `<div class="coordinator-list">
+            ${coordinadoresValidos.map(c => `
+              <div class="coordinator-item">
+                <span class="icon">⏳</span>
+                <div class="info">
+                  <div class="name">${c.nombre} ${c.apellido}</div>
+                  <div class="email">${c.email}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>`
+        );
+
+        // 2. Enviar email a cada coordinador
+        const results = [];
+        
+        for (const coord of coordinadoresValidos) {
+          const coordNombre = `${coord.nombre || ''} ${coord.apellido || ''}`.trim() || 'Coordinador';
+          
+          try {
+            const emailPayload = {
+              to: coord.email,
+              subject: `📋 Nueva Inscripción: ${estudianteNombre} ${estudianteApellido} - ${tipoPractica}`,
+              mensaje_html: `
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+                    <tr>
+                      <td align="center">
+                        <table width="600" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                          
+                          <!-- Header -->
+                          <tr>
+                            <td style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); padding: 30px; text-align: center;">
+                              <h1 style="color: white; margin: 0; font-size: 24px;">Universidad Autónoma de Chile</h1>
+                              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Sistema de Gestión de Prácticas Profesionales</p>
+                            </td>
+                          </tr>
+
+                          <!-- Content -->
+                          <tr>
+                            <td style="padding: 40px 30px;">
+                              <h2 style="color: #1976d2; margin: 0 0 20px 0;">📋 Nueva Inscripción de Práctica</h2>
+                              
+                              <p style="font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 20px;">
+                                Estimado/a <strong>${coordNombre}</strong>,
+                              </p>
+                              
+                              <p style="font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 20px;">
+                                Se ha registrado una nueva práctica profesional que requiere su revisión y aprobación.
+                              </p>
+
+                              <table width="100%" cellpadding="15" style="background-color: #e3f2fd; border-radius: 6px; margin: 20px 0; border-left: 4px solid #1976d2;">
+                                <tr>
+                                  <td>
+                                    <h3 style="margin: 0 0 15px 0; color: #0d47a1;">👤 Datos del Estudiante</h3>
+                                    <table width="100%" cellpadding="6">
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px; width: 40%;"><strong>Nombre:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">${estudianteNombre} ${estudianteApellido}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Carrera:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">${carrera}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #0d47a1; font-size: 14px;"><strong>Email:</strong></td>
+                                        <td style="color: #1565c0; font-size: 14px;">${estudianteEmail}</td>
+                                      </tr>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </table>
+
+                              <table width="100%" cellpadding="15" style="background-color: #fff3e0; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ff9800;">
+                                <tr>
+                                  <td>
+                                    <h3 style="margin: 0 0 15px 0; color: #e65100;">🏢 Datos de la Práctica</h3>
+                                    <table width="100%" cellpadding="6">
+                                      <tr>
+                                        <td style="color: #e65100; font-size: 14px; width: 40%;"><strong>Empresa:</strong></td>
+                                        <td style="color: #f57c00; font-size: 14px;">${empresa}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #e65100; font-size: 14px;"><strong>Tipo de Práctica:</strong></td>
+                                        <td style="color: #f57c00; font-size: 14px;">${tipoPractica}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #e65100; font-size: 14px;"><strong>Cargo:</strong></td>
+                                        <td style="color: #f57c00; font-size: 14px;">${cargo}</td>
+                                      </tr>
+                                      <tr>
+                                        <td style="color: #e65100; font-size: 14px;"><strong>Periodo:</strong></td>
+                                        <td style="color: #f57c00; font-size: 14px;">${formatDate(fechaInicio)} - ${formatDate(fechaTermino)}</td>
+                                      </tr>
+                                    </table>
+                                  </td>
+                                </tr>
+                              </table>
+
+                              <table width="100%" cellpadding="20" style="background-color: #e8f5e9; border-radius: 6px; margin: 20px 0;">
+                                <tr>
+                                  <td style="text-align: center;">
+                                    <h3 style="margin: 0 0 15px 0; color: #2e7d32;">⚠️ Acción Requerida</h3>
+                                    <p style="margin: 0 0 15px 0; font-size: 14px; color: #666;">
+                                      Por favor, ingrese al sistema para revisar y procesar esta solicitud:
+                                    </p>
+                                    <ul style="text-align: left; margin: 0; padding-left: 30px; font-size: 14px; color: #555; line-height: 1.8;">
+                                      <li>Verificar los datos del estudiante</li>
+                                      <li>Validar información de la empresa</li>
+                                      <li>Aprobar o rechazar la solicitud</li>
+                                    </ul>
+                                  </td>
+                                </tr>
+                              </table>
+
+                              <p style="font-size: 14px; color: #666; margin-top: 20px;">
+                                Atentamente,<br>
+                                <strong>Sistema de Gestión de Prácticas</strong><br>
+                                Universidad Autónoma de Chile
+                              </p>
+                            </td>
+                          </tr>
+
+                          <!-- Footer -->
+                          <tr>
+                            <td style="background-color: #f5f5f5; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                              <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">
+                                <strong>Universidad Autónoma de Chile</strong><br>
+                                Coordinación de Prácticas Profesionales
+                              </p>
+                              <p style="margin: 0; font-size: 11px; color: #999;">
+                                © 2025 Universidad Autónoma de Chile. Todos los derechos reservados.
+                              </p>
+                            </td>
+                          </tr>
+
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+              `
+            };
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/send-email-brevo`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify(emailPayload)
+            });
+
+            const responseData = await response.json();
+
+            if (response.ok) {
+              results.push({ 
+                email: coord.email, 
+                status: 'success', 
+                name: coordNombre 
+              });
+              console.log(`✅ Email enviado a ${coord.email}`);
+            } else {
+              results.push({ 
+                email: coord.email, 
+                status: 'error', 
+                name: coordNombre, 
+                error: responseData.error || 'Unknown error' 
+              });
+              console.error(`❌ Error enviando a ${coord.email}:`, responseData);
+            }
+
+          } catch (err) {
+            results.push({ 
+              email: coord.email, 
+              status: 'error', 
+              name: coordNombre, 
+              error: err.message 
+            });
+            console.error(`❌ Exception enviando a ${coord.email}:`, err);
+          }
+        }
+
+        // 3. Mostrar resultados
+        const successCount = results.filter(r => r.status === 'success').length;
+        const errorCount = results.filter(r => r.status === 'error').length;
+
+        const resultsList = results.map(r => `
+          <div class="coordinator-item">
+            <span class="icon">${r.status === 'success' ? '✅' : '❌'}</span>
+            <div class="info">
+              <div class="name">${r.name}</div>
+              <div class="email">${r.email} ${r.error ? `- ${r.error}` : ''}</div>
+            </div>
+          </div>
+        `).join('');
+
+        if (successCount === coordinadoresValidos.length) {
+          showStatus('success', '✅ ¡Registro Simulado con Éxito!', 
+            `Se enviaron ${successCount} emails correctamente a todos los coordinadores.`,
+            `<div class="stats">
+              <div class="stat-card total">
+                <div class="number">${coordinadoresValidos.length}</div>
+                <div class="label">Total Coordinadores</div>
+              </div>
+              <div class="stat-card success">
+                <div class="number">${successCount}</div>
+                <div class="label">Enviados ✅</div>
+              </div>
+              <div class="stat-card error">
+                <div class="number">${errorCount}</div>
+                <div class="label">Fallidos ❌</div>
+              </div>
+            </div>
+            <div class="coordinator-list">${resultsList}</div>
+            <p style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 4px; font-size: 13px;">
+              💡 <strong>Verifica tus bandejas de entrada</strong> (incluyendo spam) para confirmar la recepción de los emails.
+            </p>`
+          );
+        } else {
+          showStatus('error', '⚠️ Envío Parcial', 
+            `Se enviaron ${successCount} de ${coordinadoresValidos.length} emails. ${errorCount} fallaron.`,
+            `<div class="stats">
+              <div class="stat-card total">
+                <div class="number">${coordinadoresValidos.length}</div>
+                <div class="label">Total Coordinadores</div>
+              </div>
+              <div class="stat-card success">
+                <div class="number">${successCount}</div>
+                <div class="label">Enviados ✅</div>
+              </div>
+              <div class="stat-card error">
+                <div class="number">${errorCount}</div>
+                <div class="label">Fallidos ❌</div>
+              </div>
+            </div>
+            <div class="coordinator-list">${resultsList}</div>`
+          );
+        }
+
+      } catch (error) {
+        console.error('Error general:', error);
+        showStatus('error', '❌ Error', 
+          `Ocurrió un error: ${error.message}`,
+          `<pre>${JSON.stringify(error, null, 2)}</pre>`
+        );
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>📧 Simular Registro y Enviar Emails a Coordinadores</span>';
+      }
+    }
+  </script>
+</body>
+</html>

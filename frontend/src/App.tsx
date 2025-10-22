@@ -26,7 +26,7 @@ import ListaAutoevaluaciones from './pages/ListaAutoevaluaciones';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
-import ProfileSettings from './pages/ProfileSettings';
+import CoordinadorEvaluarInforme from './pages/coordinadorEvaluarInforme';
 
 function App() {
   return (
@@ -35,6 +35,11 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<RegisterEstudiantes />} />
+            <Route
+              path="/register-estudiantes"
+              element={<RegisterEstudiantes />}
+            />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/evaluacion-supervisor/:token" element={<EvaluacionSupervisorPublica />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -45,8 +50,6 @@ function App() {
             {/* Rutas protegidas por autenticación */}
             <Route path='/' element={<RouteGuard />}>
 
-              <Route path="perfil" element={<ProfileSettings />} />
-
               {/* Rutas para el rol de estudiante */}
               <Route path='/estudiante' element={<RouteGuard roleAllowed='estudiante' />}>
                 <Route path="/estudiante/dashboard" element={<DashboardEstudiante />} />
@@ -54,7 +57,6 @@ function App() {
                 <Route path='/estudiante/seleccion-practica' element={<SeleccionPractica />} />
                 <Route path='/estudiante/autoevaluacion/:practicaId' element={<Autoevaluacion />} />
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
-                <Route path='/estudiante/empresas' element={<EmpresasPage />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
