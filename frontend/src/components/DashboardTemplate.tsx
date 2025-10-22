@@ -84,6 +84,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     { label: 'Inicio', icon: <DashboardIcon />, to: '/estudiante/dashboard' },
     { label: 'Autoevaluación', icon: <AssignmentIcon />, to: '/estudiante/autoevaluacion' },
     { label: 'Ficha de práctica', icon: <DescriptionIcon />, to: '/estudiante/fichapractica' },
+    { label: 'Empresas', icon: <BusinessIcon />, to: '/estudiante/empresas' },
     { label: 'Adjuntar informes', icon: <UploadIcon />, to: '/estudiante/adjuntar_informes' },
     { label: 'Retroalimentación', icon: <FeedbackIcon />, to: '/estudiante/retroalimentacion' },
     { label: 'Historial de solicitudes', icon: <DescriptionIcon />, to: '/historial_solicitudes' }
