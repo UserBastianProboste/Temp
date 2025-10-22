@@ -34,8 +34,6 @@ import {
   Business as BusinessIcon,
   LocationOn as LocationOnIcon,
   Person as PersonIcon,
-  Work as WorkIcon,
-  Email as EmailIcon,
   Phone as PhoneIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
@@ -292,6 +290,16 @@ const EmpresasPage = () => {
     return sorted;
   }, [filteredEmpresas, sortOption]);
 
+  const columnCount = useMemo(() => {
+    if (isSmallScreen) {
+      return 1;
+    }
+    if (isMediumScreen) {
+      return 2;
+    }
+    return 3;
+  }, [isSmallScreen, isMediumScreen]);
+
   const masonryColumns = useMemo(
     () => buildBalancedColumns(sortedEmpresas, columnCount),
     [sortedEmpresas, columnCount],
@@ -314,8 +322,8 @@ const EmpresasPage = () => {
     setSelectedEmpresaId((current) => (current === empresaId ? null : empresaId));
   };
 
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
+  const handleSortChange = (value: SortOption) => {
+    setSortOption(value);
   };
 
   const handleFilterChange = (field: keyof EmpresaFilters) => (event: SelectChangeEvent<FilterValue>) => {
@@ -472,29 +480,40 @@ const EmpresasPage = () => {
             </Typography>
           </Stack>
 
-          {selectedEmpresa && (
-            <Alert
-              icon={<CheckCircleOutlineIcon fontSize="inherit" />}
-              severity="info"
-              sx={{ borderRadius: 2 }}
-              action={(
-                <Button color="inherit" size="small" onClick={() => setSelectedEmpresaId(null)}>
-                  Quitar selección
-                </Button>
+              {(hasActiveFilters || selectedEmpresa) && (
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
+                  {hasActiveFilters && (
+                    <Button variant="text" onClick={handleClearFilters} startIcon={<FilterAltIcon />}>
+                      Limpiar filtros
+                    </Button>
+                  )}
+                  {selectedEmpresa && (
+                    <Alert
+                      icon={<CheckCircleOutlineIcon fontSize="inherit" />}
+                      severity="info"
+                      sx={{ borderRadius: 2, flex: 1 }}
+                      action={
+                        <Button color="inherit" size="small" onClick={() => setSelectedEmpresaId(null)}>
+                          Quitar selección
+                        </Button>
+                      }
+                    >
+                      Has seleccionado <strong>{selectedEmpresa.razon_social}</strong> como referencia.
+                    </Alert>
+                  )}
+                </Stack>
               )}
-            >
-              Has seleccionado <strong>{selectedEmpresa.razon_social}</strong> como referencia.
-            </Alert>
-          )}
+            </Box>
+          </Fade>
 
           {error && (
             <Alert
               severity="error"
-              action={(
+              action={
                 <Button color="inherit" size="small" onClick={() => void loadEmpresas()}>
                   Reintentar
                 </Button>
-              )}
+              }
               sx={{ borderRadius: 2 }}
             >
               {error}
@@ -672,7 +691,8 @@ const EmpresasPage = () => {
                 <Stack key={columnIndex} spacing={3} sx={{ flex: 1 }}>
                   {column.map((empresa, itemIndex) => {
                     const isSelected = selectedEmpresaId === empresa.id;
-                    const fadeDelay = Math.min((columnIndex * 4 + itemIndex) * 60, 360);
+                    const animationDelay = Math.min((columnIndex * 4 + itemIndex) * 60, 360);
+
                     return (
                       <Grow
                         in
@@ -699,11 +719,11 @@ const EmpresasPage = () => {
                           }}
                         >
                           <CardHeader
-                            avatar={(
+                            avatar={
                               <Avatar sx={{ bgcolor: 'primary.main' }}>
                                 <BusinessIcon />
                               </Avatar>
-                            )}
+                            }
                             title={
                               <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
                                 {empresa.razon_social}
