@@ -29,10 +29,14 @@ const SeleccionPractica: React.FC = () => {
     navigate(`/estudiante/autoevaluacion/${id}`);
   };
 
-  const puedeSeleccionar = (fechaTermino: string) => {
+  const puedeSeleccionar = (fechaInicio: string, estado: string) => {
+    // Puede seleccionar si la práctica ya comenzó (independiente de si terminó o no)
+    // y si el estado es 'aprobada', 'en_progreso' o 'completada'
     const hoy = new Date();
-    const fechaFin = new Date(fechaTermino);
-    return hoy >= fechaFin;
+    const fechaStart = new Date(fechaInicio);
+    const estadosValidos = ['aprobada', 'en_progreso', 'completada'];
+    
+    return hoy >= fechaStart && estadosValidos.includes(estado);
   };
 
   return (
@@ -85,21 +89,38 @@ const SeleccionPractica: React.FC = () => {
                       sx={{
                         display: "flex",
                         justifyContent: "space-between",
-                        flexWrap: "nowrap",
+                        flexWrap: "wrap",
+                        gap: 2,
                       }}
                     >
                       <Box>
                         <Typography variant="body1">
-                          Departamento: {p.departamento}
+                          <strong>Empresa:</strong> {p.empresa?.razon_social || 'N/A'}
                         </Typography>
                         <Typography variant="body1">
-                          Cargo: {p.cargo_por_desarrollar}
+                          <strong>Departamento:</strong> {p.departamento}
+                        </Typography>
+                        <Typography variant="body1">
+                          <strong>Cargo:</strong> {p.cargo_por_desarrollar}
                         </Typography>
                       </Box>
                       <Box sx={{ textAlign: "left" }}>
-                        <Typography variant="body1">Estado: {p.estado}</Typography>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            color: p.estado === 'aprobada' || p.estado === 'en_progreso' || p.estado === 'completada' 
+                              ? 'success.main' 
+                              : 'warning.main',
+                            fontWeight: 600
+                          }}
+                        >
+                          <strong>Estado:</strong> {p.estado}
+                        </Typography>
                         <Typography variant="body1">
-                          Fecha Término: {p.fecha_termino}
+                          <strong>Fecha Inicio:</strong> {p.fecha_inicio}
+                        </Typography>
+                        <Typography variant="body1">
+                          <strong>Fecha Término:</strong> {p.fecha_termino}
                         </Typography>
                       </Box>
                     </Box>
@@ -111,9 +132,11 @@ const SeleccionPractica: React.FC = () => {
                       size="large"
                       sx={{ py: 2, fontSize: { xs: "1rem", sm: "1.1rem", md: "1.2rem" } }}
                       onClick={() => handleSeleccion(p.id)}
-                      disabled={!puedeSeleccionar(p.fecha_termino)}
+                      disabled={!puedeSeleccionar(p.fecha_inicio, p.estado)}
                     >
-                      Seleccionar
+                      {puedeSeleccionar(p.fecha_inicio, p.estado) 
+                        ? 'Seleccionar' 
+                        : 'No disponible'}
                     </Button>
                   </Box>
                 </Card>

@@ -3,20 +3,24 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import DashboardTemplate from '../components/DashboardTemplate';
 import {
-  Container,
-  Paper,
   Typography,
   TextField,
   Button,
   Box,
   Alert,
-  Divider,
+  Container,
+  Paper,
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Card,
+  CardContent,
 } from '@mui/material';
+// removed duplicate DashboardTemplate import
 import { supabase } from '../services/supabaseClient';
+import { sendBrevoEmail } from '../services/brevoEmailService';
+import { getEmailTemplate } from '../services/emailTemplates';
 
 interface FormData {
   razon_social: string;
@@ -44,7 +48,22 @@ interface Estudiante {
   nombre: string;
   apellido: string;
   carrera: string;
+  email?: string | null;
 }
+
+// Nota: Formateo de fechas ahora lo maneja emailTemplates.ts
+// const formatDisplayDate = (value: string) => {
+//   if (!value) return '—';
+//   try {
+//     return new Intl.DateTimeFormat('es-CL', {
+//       year: 'numeric',
+//       month: '2-digit',
+//       day: '2-digit'
+//     }).format(new Date(value));
+//   } catch (error) {
+//     return value;
+//   }
+// };
 
 const PracticaProfesionalForm: React.FC = () => {
   // get current authenticated user from the AuthProvider
@@ -91,7 +110,7 @@ const PracticaProfesionalForm: React.FC = () => {
       try {
         const { data: estudianteData, error } = await supabase
           .from('estudiantes')
-          .select('id, nombre, apellido, carrera')
+          .select('id, nombre, apellido, carrera, email')
           .eq('user_id', currentUser.id)
           .maybeSingle();
 
@@ -111,7 +130,7 @@ const PracticaProfesionalForm: React.FC = () => {
               telefono: '',
               carrera: 'Ingeniería Civil Informática'
             }])
-            .select('id, nombre, apellido, carrera')
+            .select('id, nombre, apellido, carrera, email')
             .single();
           if (!createError && newEstudiante) {
             if (mounted) {
@@ -411,102 +430,158 @@ const PracticaProfesionalForm: React.FC = () => {
 
       if (practicaError) throw practicaError;
 
-      // Send notification to all coordinators (synchronously) so the UI shows aggregated result
+      // Send notifications (estudiante + coordinadores)
       try {
         const practiceId = (practicaInserted as any)?.id ?? null;
+        const studentEmail = (estudiante?.email ?? currentUser?.email ?? '').trim();
+        const resultadosEnvio: string[] = [];
 
-        // fetch all coordinators
-        const { data: coords, error: coordsErr } = await supabase
-          .from('coordinadores')
-          .select('email, nombre, apellido');
+        const registrarNotificacion = async (
+          destinatario: string,
+          asunto: string,
+          cuerpo: Record<string, unknown>,
+          detalleError: string
+        ) => {
+          try {
+            await supabase.from('notificaciones').insert([{
+              destinatario,
+              asunto,
+              cuerpo,
+              estado: 'pendiente',
+              error: detalleError
+            }]);
+          } catch (insertErr) {
+            console.warn('Falló el registro en notificaciones', insertErr);
+            resultadosEnvio.push(`${destinatario}:fallback-error(${insertErr instanceof Error ? insertErr.message : String(insertErr)})`);
+          }
+        };
 
-        let recipients: Array<{ email: string; nombre?: string; apellido?: string }> = [];
-        if (!coordsErr && Array.isArray(coords) && coords.length > 0) {
-          recipients = coords.map((c: any) => ({ email: c.email, nombre: c.nombre, apellido: c.apellido })).filter(r => !!r.email);
-        }
-
-        // If no coordinators, fallback to the test recipient so we can validate delivery
-        if (recipients.length === 0) {
-          recipients = [{ email: 'niconicotu@gmail.com', nombre: undefined, apellido: undefined }];
-        }
-
-        const results: string[] = [];
-
-        for (const r of recipients) {
-          const payload = {
-            to: r.email,
-            coordinator_name: `${r.nombre ?? ''} ${r.apellido ?? ''}`.trim(),
+        // 1) Confirmación al estudiante
+        if (studentEmail) {
+          // Usar plantilla profesional mejorada
+          const emailData = getEmailTemplate('ficha_recibida', {
             estudiante_nombre: estudiante?.nombre ?? '',
             estudiante_apellido: estudiante?.apellido ?? '',
             tipo_practica: normalized.tipo_practica,
             practica_id: practiceId,
             empresa: normalized.razon_social,
             fecha_inicio: normalized.fecha_inicio,
-            fecha_termino: normalized.fecha_termino
+            fecha_termino: normalized.fecha_termino,
+          });
+
+          const studentPayload = {
+            to: studentEmail,
+            subject: emailData.subject,
+            estudiante_nombre: estudiante?.nombre ?? '',
+            estudiante_apellido: estudiante?.apellido ?? '',
+            tipo_practica: normalized.tipo_practica,
+            practica_id: practiceId,
+            empresa: normalized.razon_social,
+            fecha_inicio: normalized.fecha_inicio,
+            fecha_termino: normalized.fecha_termino,
+            mensaje_html: emailData.html
           };
 
-          let sent = false;
-          let errors: string[] = [];
-
-          // 1) Try Supabase Edge Function (use deployed name)
-          if ((supabase as any).functions && typeof (supabase as any).functions.invoke === 'function') {
-            try {
-              // add timeout so invocation doesn't hang forever
-              const invokePromise = (supabase as any).functions.invoke('send-email-brevo', { body: JSON.stringify(payload) });
-              await Promise.race([invokePromise, new Promise((_, reject) => setTimeout(() => reject(new Error('invoke timeout')), 10000))]);
-              sent = true;
-            } catch (fnErr) {
-              console.warn('Supabase function invocation failed for', r.email, fnErr);
-              errors.push('function:' + String(fnErr));
-            }
+          try {
+            await sendBrevoEmail(studentPayload);
+            resultadosEnvio.push(`${studentEmail}:ok`);
+          } catch (studentErr) {
+            const detalle = studentErr instanceof Error ? studentErr.message : String(studentErr);
+            console.warn('Fallo envío a estudiante', studentErr);
+            await registrarNotificacion(studentEmail, emailData.subject, studentPayload, detalle);
+            resultadosEnvio.push(`${studentEmail}:fail(${detalle})`);
           }
-
-          // 2) Fallback to external mailer
-          if (!sent) {
-            const mailerUrl = (import.meta as any).env?.VITE_MAILER_URL as string | undefined;
-            if (mailerUrl) {
-              try {
-                // fetch with timeout
-                const fetchPromise = fetch(mailerUrl, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify(payload) });
-                const resp = await Promise.race([fetchPromise, new Promise((_, reject) => setTimeout(() => reject(new Error('fetch timeout')), 10000))]);
-                if ((resp as Response).ok) sent = true;
-                else {
-                  const txt = await (resp as Response).text();
-                  errors.push('mailer:' + txt);
-                }
-              } catch (mailErr) {
-                console.warn('External mailer failed for', r.email, mailErr);
-                errors.push('mailerErr:' + String(mailErr));
-              }
-            }
-          }
-
-          // 3) DB fallback
-          if (!sent) {
-            try {
-              await supabase.from('notificaciones').insert([{ to: r.email, subject: `Nueva inscripción - ${formData.tipo_practica}`, body: JSON.stringify(payload), created_at: new Date() }]);
-              errors.push('notificacion_inserted');
-            } catch (insertErr) {
-              console.warn('Failed to insert notification record for', r.email, insertErr);
-              errors.push('insertErr:' + String(insertErr));
-            }
-          }
-
-          if (sent) results.push(`${r.email}:ok`);
-          else results.push(`${r.email}:fail(${errors.join('|')})`);
+        } else {
+          resultadosEnvio.push('estudiante:sin_correo');
         }
 
-        // Summarize results
-        const okCount = results.filter(s => s.includes(':ok')).length;
-        const failCount = results.length - okCount;
+        // 2) Aviso a coordinadores (uno por correo para conservar saludo)
+        const { data: coords, error: coordsErr } = await supabase
+          .from('coordinadores')
+          .select('id, email, nombre, apellido')
+          .order('nombre', { ascending: true });
+
+        if (coordsErr) {
+          console.error('Error al obtener coordinadores:', coordsErr);
+          resultadosEnvio.push('coordinadores:error_db');
+        }
+
+        const coordinadores = !coordsErr && Array.isArray(coords)
+          ? coords
+              .map((c: any) => ({
+                email: typeof c.email === 'string' ? c.email.trim() : '',
+                nombre: c.nombre,
+                apellido: c.apellido
+              }))
+              .filter((c) => c.email.length > 0)
+          : [];
+
+        console.log(`📧 Se encontraron ${coordinadores.length} coordinadores con email válido`);
+
+        for (const coord of coordinadores) {
+          const coordNombre = `${coord.nombre ?? ''} ${coord.apellido ?? ''}`.trim() || 'Coordinador';
+          
+          console.log(`📨 Preparando email para coordinador: ${coordNombre} (${coord.email})`);
+          
+          // Usar plantilla profesional mejorada
+          const coordEmailData = getEmailTemplate('nueva_inscripcion', {
+            coordinator_name: coordNombre,
+            estudiante_nombre: estudiante?.nombre ?? '',
+            estudiante_apellido: estudiante?.apellido ?? '',
+            tipo_practica: normalized.tipo_practica,
+            practica_id: practiceId,
+            empresa: normalized.razon_social,
+            fecha_inicio: normalized.fecha_inicio,
+            fecha_termino: normalized.fecha_termino,
+          });
+
+          const coordinatorPayload = {
+            to: coord.email,
+            subject: coordEmailData.subject,
+            estudiante_nombre: estudiante?.nombre ?? '',
+            estudiante_apellido: estudiante?.apellido ?? '',
+            tipo_practica: normalized.tipo_practica,
+            practica_id: practiceId,
+            empresa: normalized.razon_social,
+            fecha_inicio: normalized.fecha_inicio,
+            fecha_termino: normalized.fecha_termino,
+            mensaje_html: coordEmailData.html
+          };
+
+          try {
+            console.log(`🚀 Enviando email a: ${coord.email}`);
+            await sendBrevoEmail(coordinatorPayload);
+            console.log(`✅ Email enviado exitosamente a: ${coord.email}`);
+            resultadosEnvio.push(`${coord.email}:ok`);
+          } catch (coordErr) {
+            const detalle = coordErr instanceof Error ? coordErr.message : String(coordErr);
+            console.error(`❌ Error enviando a coordinador ${coord.email}:`, coordErr);
+            await registrarNotificacion(coord.email, coordEmailData.subject, coordinatorPayload, detalle);
+            resultadosEnvio.push(`${coord.email}:fail(${detalle})`);
+          }
+        }
+
+        if (coordinadores.length === 0) {
+          console.warn('⚠️ No se encontraron coordinadores con email válido');
+          resultadosEnvio.push('coordinadores:sindatos');
+        }
+
+        const okCount = resultadosEnvio.filter((s) => s.includes(':ok')).length;
+        const failCount = resultadosEnvio.filter((s) => s.includes(':fail') || s.includes(':sin_') || s.includes(':fallback-error')).length;
+
+        console.log(`📊 Resumen de envíos: ${okCount} exitosos, ${failCount} fallidos`);
+
         if (failCount === 0) {
-          setMessage({ type: 'success', text: `Formulario enviado correctamente. Notificación enviada a ${okCount} coordinador(es).` });
+          setMessage({
+            type: 'success',
+            text: `Formulario enviado correctamente. Emails enviados: ${okCount} (${coordinadores.length} coordinadores). Detalles: ${resultadosEnvio.join('; ')}`
+          });
         } else {
-          setMessage({ type: 'error', text: `Formulario enviado. Éxitos: ${okCount}, Fallos: ${failCount}. Detalles: ${results.join('; ')}` });
+          setMessage({ type: 'error', text: `Formulario enviado con advertencias. Éxitos: ${okCount}, incidencias: ${failCount}. Detalles: ${resultadosEnvio.join('; ')}` });
         }
       } catch (notifyErr) {
-        console.warn('Unexpected error notifying coordinators:', notifyErr);
-        setMessage({ type: 'error', text: 'Formulario enviado, pero ocurrió un error al notificar a los coordinadores.' });
+        console.warn('Unexpected error notificando envíos:', notifyErr);
+        setMessage({ type: 'error', text: 'Formulario enviado, pero ocurrió un error al notificar al estudiante o coordinadores.' });
       }
 
     // notification handled above (synchronous test flow)
@@ -551,11 +626,15 @@ const PracticaProfesionalForm: React.FC = () => {
           gutterBottom
           sx={{ backgroundColor: '#fff', color: '#000', p: 2, borderRadius: 1 }}
         >
-          Ficha de inscripción de práctica profesional
+          Ficha de práctica profesional
         </Typography>
 
         {message && (
-          <Alert severity={message.type} sx={{ mb: 3 }}>
+          <Alert
+            onClose={() => setMessage(null)}
+            severity={message.type}
+            sx={{ width: "100%", fontSize: { xs: "0.85rem", sm: "1rem" }, mt: 2 }}
+          >
             {message.text}
           </Alert>
         )}
@@ -566,261 +645,316 @@ const PracticaProfesionalForm: React.FC = () => {
           </Alert>
         )}
 
-        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-            Datos del alumno:
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-                <TextField fullWidth label="Nombre" value={alumnoNombre} disabled />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField fullWidth label="Apellido" value={alumnoApellido} disabled />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField fullWidth label="Email" value={currentUser?.email ?? ''} disabled />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField fullWidth label="Carrera" value={alumnoCarrera} disabled />
-            </Box>
-          </Box>
-
-            <Divider sx={{ my: 3 }} />
-
-          <Typography variant="h6" gutterBottom>
-            Datos de la empresa/institución:
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-            <Box sx={{ width: '100%' }}>
-              <TextField
-                required
-                fullWidth
-                label="Razón social"
-                name="razon_social"
-                value={formData.razon_social}
-                onChange={handleChange}
-                error={!!errors.razon_social}
-                helperText={errors.razon_social}
-              />
-            </Box>
-            <Box sx={{ width: '100%' }}>
-              <TextField
-                required
-                fullWidth
-                label="Dirección"
-                name="direccion"
-                value={formData.direccion}
-                onChange={handleChange}
-                error={!!errors.direccion}
-                helperText={errors.direccion}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Jefe directo"
-                name="jefe_directo"
-                value={formData.jefe_directo}
-                onChange={handleChange}
-                error={!!errors.jefe_directo}
-                helperText={errors.jefe_directo}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Cargo del jefe"
-                name="cargo_jefe"
-                value={formData.cargo_jefe}
-                onChange={handleChange}
-                error={!!errors.cargo_jefe}
-                helperText={errors.cargo_jefe}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Teléfono"
-                name="telefono_empresa"
-                value={formData.telefono_empresa}
-                onChange={handleChange}
-                error={!!errors.telefono_empresa}
-                helperText={errors.telefono_empresa}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Email"
-                name="email_empresa"
-                type="email"
-                value={formData.email_empresa}
-                onChange={handleChange}
-                error={!!errors.email_empresa}
-                helperText={errors.email_empresa}
-              />
-            </Box>
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          <Typography variant="h6" gutterBottom>
-            Datos de la práctica:
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <FormControl fullWidth error={!!errors.tipo_practica}>
-                <InputLabel>Tipo de práctica</InputLabel>
-                <Select
-                  name="tipo_practica"
-                  value={formData.tipo_practica}
-                  label="Tipo de práctica"
-                  onChange={handleSelectChange}
-                >
-                  <MenuItem value="Práctica I">Práctica I</MenuItem>
-                  <MenuItem value="Práctica II">Práctica II</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Fecha de inicio"
-                name="fecha_inicio"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.fecha_inicio}
-                onChange={handleChange}
-                error={!!errors.fecha_inicio}
-                helperText={errors.fecha_inicio}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Fecha de término"
-                name="fecha_termino"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.fecha_termino}
-                onChange={handleChange}
-                error={!!errors.fecha_termino}
-                helperText={errors.fecha_termino}
-              />
-            </Box>
-            <Box sx={{ width: '100%' }}>
-              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                *Considerar 7 semanas de práctica aproximadamente con jornada de 45 hrs (315 horas)
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2 }}>
+          {/* Card 1: Datos del Alumno */}
+          <Card sx={{ borderRadius: 2, boxShadow: 3, mb: 3 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  mb: 3,
+                  fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                  fontWeight: 600,
+                  color: "primary.main",
+                }}
+              >
+                Datos del Alumno
               </Typography>
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Horario Trabajo"
-                name="horario_trabajo"
-                placeholder="Ej: 09:00 - 18:00"
-                value={formData.horario_trabajo}
-                onChange={handleChange}
-                error={!!errors.horario_trabajo}
-                helperText={errors.horario_trabajo || 'Formato HH:MM - HH:MM'}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Horario Colación"
-                name="colacion"
-                placeholder="Ej: 13:00 - 14:00"
-                value={formData.colacion}
-                onChange={handleChange}
-                error={!!errors.colacion}
-                helperText={errors.colacion || 'Formato HH:MM - HH:MM'}
-              />
-            </Box>
-            <Box sx={{ width: '100%' }}>
-              <TextField
-                required
-                fullWidth
-                label="Cargo por desarrollar"
-                name="cargo_por_desarrollar"
-                value={formData.cargo_por_desarrollar}
-                onChange={handleChange}
-                error={!!errors.cargo_por_desarrollar}
-                helperText={errors.cargo_por_desarrollar}
-              />
-            </Box>
-            <Box sx={{ width: '100%' }}>
-              <TextField
-                required
-                fullWidth
-                label="Departamento en que trabajará"
-                name="departamento"
-                value={formData.departamento}
-                onChange={handleChange}
-                error={!!errors.departamento}
-                helperText={errors.departamento}
-              />
-            </Box>
-            <Box sx={{ width: '100%' }}>
-              <TextField
-                required
-                fullWidth
-                label="Actividades por realizar"
-                name="actividades"
-                multiline
-                rows={4}
-                value={formData.actividades}
-                onChange={handleChange}
-                error={!!errors.actividades}
-                helperText={errors.actividades || 'Describa con detalle (mínimo 20 caracteres)'}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Fecha de firma"
-                name="fecha_firma"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.fecha_firma}
-                onChange={handleChange}
-                error={!!errors.fecha_firma}
-                helperText={errors.fecha_firma}
-              />
-            </Box>
-            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 8px)' } }}>
-              <TextField
-                required
-                fullWidth
-                label="Firma Alumno (nombre completo)"
-                name="firma_alumno"
-                placeholder="Ingrese su nombre completo como firma"
-                value={formData.firma_alumno}
-                onChange={handleChange}
-                error={!!errors.firma_alumno}
-                helperText={errors.firma_alumno || alumnoNombreCompleto}
-              />
-            </Box>
-          </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                  gap: 2,
+                }}
+              >
+                <TextField fullWidth label="Nombre" value={alumnoNombre} disabled />
+                <TextField fullWidth label="Apellido" value={alumnoApellido} disabled />
+                <TextField fullWidth label="Email" value={currentUser?.email ?? ''} disabled />
+                <TextField fullWidth label="Carrera" value={alumnoCarrera} disabled />
+              </Box>
+            </CardContent>
+          </Card>
 
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            sx={{ mt: 3, mb: 2 }}
-            disabled={loading || !currentUser || estudianteLoading}
-          >
-            {loading ? 'Enviando...' : 'Enviar Formulario'}
-          </Button>
+          {/* Card 2: Datos de la Empresa */}
+          <Card sx={{ borderRadius: 2, boxShadow: 3, mb: 3 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  mb: 3,
+                  fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                  fontWeight: 600,
+                  color: "primary.main",
+                }}
+              >
+                Datos de la Empresa/Institución
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <TextField
+                  required
+                  fullWidth
+                  label="Razón Social"
+                  name="razon_social"
+                  value={formData.razon_social}
+                  onChange={handleChange}
+                  error={!!errors.razon_social}
+                  helperText={errors.razon_social}
+                />
+                <TextField
+                  required
+                  fullWidth
+                  label="Dirección"
+                  name="direccion"
+                  value={formData.direccion}
+                  onChange={handleChange}
+                  error={!!errors.direccion}
+                  helperText={errors.direccion}
+                />
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                    gap: 2,
+                  }}
+                >
+                  <TextField
+                    required
+                    fullWidth
+                    label="Jefe Directo"
+                    name="jefe_directo"
+                    value={formData.jefe_directo}
+                    onChange={handleChange}
+                    error={!!errors.jefe_directo}
+                    helperText={errors.jefe_directo}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Cargo del Jefe"
+                    name="cargo_jefe"
+                    value={formData.cargo_jefe}
+                    onChange={handleChange}
+                    error={!!errors.cargo_jefe}
+                    helperText={errors.cargo_jefe}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Teléfono"
+                    name="telefono_empresa"
+                    value={formData.telefono_empresa}
+                    onChange={handleChange}
+                    error={!!errors.telefono_empresa}
+                    helperText={errors.telefono_empresa}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Email"
+                    name="email_empresa"
+                    type="email"
+                    value={formData.email_empresa}
+                    onChange={handleChange}
+                    error={!!errors.email_empresa}
+                    helperText={errors.email_empresa}
+                  />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Datos de la Práctica */}
+          <Card sx={{ borderRadius: 2, boxShadow: 3, mb: 3 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  mb: 3,
+                  fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                  fontWeight: 600,
+                  color: "primary.main",
+                }}
+              >
+                Datos de la Práctica
+              </Typography>
+              
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                    gap: 2,
+                  }}
+                >
+                  <FormControl fullWidth error={!!errors.tipo_practica}>
+                    <InputLabel>Tipo de Práctica</InputLabel>
+                    <Select
+                      name="tipo_practica"
+                      value={formData.tipo_practica}
+                      label="Tipo de Práctica"
+                      onChange={handleSelectChange}
+                    >
+                      <MenuItem value="Práctica I">Práctica I</MenuItem>
+                      <MenuItem value="Práctica II">Práctica II</MenuItem>
+                    </Select>
+                  </FormControl>
+                  
+                  <TextField
+                    required
+                    fullWidth
+                    label="Fecha de Inicio"
+                    name="fecha_inicio"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={formData.fecha_inicio}
+                    onChange={handleChange}
+                    error={!!errors.fecha_inicio}
+                    helperText={errors.fecha_inicio}
+                  />
+                </Box>
+
+                <TextField
+                  required
+                  fullWidth
+                  label="Fecha de Término"
+                  name="fecha_termino"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  value={formData.fecha_termino}
+                  onChange={handleChange}
+                  error={!!errors.fecha_termino}
+                  helperText={errors.fecha_termino}
+                />
+
+                <Alert severity="info" sx={{ fontSize: { xs: "0.85rem", sm: "0.95rem" } }}>
+                  *Considerar 7 semanas de práctica aproximadamente con jornada de 45 hrs (315 horas)
+                </Alert>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                    gap: 2,
+                  }}
+                >
+                  <TextField
+                    required
+                    fullWidth
+                    label="Horario Trabajo"
+                    name="horario_trabajo"
+                    placeholder="Ej: 09:00 - 18:00"
+                    value={formData.horario_trabajo}
+                    onChange={handleChange}
+                    error={!!errors.horario_trabajo}
+                    helperText={errors.horario_trabajo || 'Formato HH:MM - HH:MM'}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Horario Colación"
+                    name="colacion"
+                    placeholder="Ej: 13:00 - 14:00"
+                    value={formData.colacion}
+                    onChange={handleChange}
+                    error={!!errors.colacion}
+                    helperText={errors.colacion || 'Formato HH:MM - HH:MM'}
+                  />
+                </Box>
+
+                <TextField
+                  required
+                  fullWidth
+                  label="Cargo por Desarrollar"
+                  name="cargo_por_desarrollar"
+                  value={formData.cargo_por_desarrollar}
+                  onChange={handleChange}
+                  error={!!errors.cargo_por_desarrollar}
+                  helperText={errors.cargo_por_desarrollar}
+                />
+
+                <TextField
+                  required
+                  fullWidth
+                  label="Departamento en que Trabajará"
+                  name="departamento"
+                  value={formData.departamento}
+                  onChange={handleChange}
+                  error={!!errors.departamento}
+                  helperText={errors.departamento}
+                />
+
+                <TextField
+                  required
+                  fullWidth
+                  label="Actividades por Realizar"
+                  name="actividades"
+                  multiline
+                  rows={4}
+                  value={formData.actividades}
+                  onChange={handleChange}
+                  error={!!errors.actividades}
+                  helperText={errors.actividades || 'Describa con detalle (mínimo 20 caracteres)'}
+                />
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                    gap: 2,
+                  }}
+                >
+                  <TextField
+                    required
+                    fullWidth
+                    label="Fecha de Firma"
+                    name="fecha_firma"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={formData.fecha_firma}
+                    onChange={handleChange}
+                    error={!!errors.fecha_firma}
+                    helperText={errors.fecha_firma}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Firma Alumno (nombre completo)"
+                    name="firma_alumno"
+                    placeholder="Ingrese su nombre completo como firma"
+                    value={formData.firma_alumno}
+                    onChange={handleChange}
+                    error={!!errors.firma_alumno}
+                    helperText={errors.firma_alumno || alumnoNombreCompleto}
+                  />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Botón de envío */}
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={loading || !currentUser || estudianteLoading}
+              sx={{
+                px: 6,
+                py: 1.5,
+                fontSize: { xs: "0.95rem", sm: "1.1rem" },
+                fontWeight: 600,
+                minWidth: { xs: "100%", sm: "300px" },
+              }}
+            >
+              {loading ? 'Enviando...' : 'Enviar Formulario'}
+            </Button>
+          </Box>
         </Box>
       </Paper>
     </Container>

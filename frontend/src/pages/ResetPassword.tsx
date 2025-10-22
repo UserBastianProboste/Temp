@@ -57,49 +57,44 @@ const ResetPassword: React.FC = () => {
 
         let valid = false;
 
-        try {
-          const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
-          if (!error && data.session) {
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          if (data.session) {
             valid = true;
           }
-        } catch (getSessionError) {
-          console.debug('getSessionFromUrl error', getSessionError);
-        }
-
-        if (!valid && code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-          valid = true;
         }
 
         if (!valid && tokenHash) {
-          const { error } = await supabase.auth.verifyOtp({
+          const { data, error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: type as any,
           });
           if (error) throw error;
-          valid = true;
+          if (data?.session) {
+            valid = true;
+          }
         }
 
         if (!valid && otpToken && email) {
-          const { error } = await supabase.auth.verifyOtp({
+          const { data, error } = await supabase.auth.verifyOtp({
             token: otpToken,
             type: type as any,
             email,
           });
           if (error) throw error;
-          valid = true;
-        }
-
-        if (!valid) {
-          if (accessToken) {
-            const { error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken || '',
-            });
-            if (error) throw error;
+          if (data?.session) {
             valid = true;
           }
+        }
+
+        if (!valid && accessToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+          if (error) throw error;
+          valid = true;
         }
 
         if (!valid) {

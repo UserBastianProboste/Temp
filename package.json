@@ -1,8 +1,0 @@
-{
-  "name": "consultoria_informatica",
-  "private": true,
-  "scripts": {
-    "lint": "npm --prefix frontend run lint",
-    "lint:fix": "npm --prefix frontend run lint -- --fix"
-  }
-}
