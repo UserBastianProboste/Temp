@@ -59,6 +59,30 @@ const emptyFormState: EmpresaFormState = {
   email: '',
 };
 
+const getResponsiveGridSize = (index: number, total: number) => {
+  const xs = 12;
+
+  const remainderSm = total % 2;
+  const isLast = index === total - 1;
+
+  let sm = 6;
+  if (remainderSm === 1 && isLast) {
+    sm = 12;
+  }
+
+  const remainderMd = total % 3;
+  const isPenultimate = index === total - 2;
+
+  let md = 4;
+  if (remainderMd === 1 && isLast) {
+    md = 12;
+  } else if (remainderMd === 2 && (isLast || isPenultimate)) {
+    md = 6;
+  }
+
+  return { xs, sm, md };
+};
+
 const EmpresasPage = () => {
   const { role } = useAuth();
   const isCoordinator = role === 'coordinador';
@@ -289,10 +313,11 @@ const EmpresasPage = () => {
             </Alert>
           ) : (
             <Grid container spacing={3}>
-              {empresas.map((empresa) => {
+              {empresas.map((empresa, index) => {
                 const isSelected = selectedEmpresaId === empresa.id;
+                const { xs, sm, md } = getResponsiveGridSize(index, empresas.length);
                 return (
-                  <Grid item xs={12} sm={6} md={4} key={empresa.id}>
+                  <Grid item xs={xs} sm={sm} md={md} key={empresa.id}>
                     <Card
                       sx={{
                         height: '100%',
