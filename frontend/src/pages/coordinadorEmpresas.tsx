@@ -20,13 +20,12 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Divider,
   Fade,
-  FormControl,
   IconButton,
   InputAdornment,
-  InputLabel,
   MenuItem,
-  Select,
+  Paper,
   Snackbar,
   Stack,
   TextField,
@@ -46,6 +45,8 @@ import {
   Phone as PhoneIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  FilterList as FilterListIcon,
+  Search as SearchIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
@@ -174,16 +175,14 @@ const EmpresasPage = () => {
     { open: false, message:PractiK '', severity: 'success' },
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterValues, setFilterValues] = useState<Record<FilterKey, string>>({ ...INITIAL_FILTER_STATE });
-  type SortOption = 'alphabeticalAsc' | 'alphabeticalDesc' | 'createdAtDesc' | 'createdAtAsc';
-  const [sortOption, setSortOption] = useState<SortOption>('alphabeticalAsc');
-  const filterLabels: Record<FilterKey, string> = {
-    direccion: 'Ubicación',
-    jefe_directo: 'Usuario',
-    email: 'Correo',
-    cargo_jefe: 'Cargo del contacto',
-    telefono: 'Teléfono',
-  };
+  const [filters, setFilters] = useState<EmpresaFilters>({
+    location: 'all',
+    user: 'all',
+    email: 'all',
+    role: 'all',
+    phone: 'all',
+  });
+  const [sortOption, setSortOption] = useState<'alphabetical' | 'created_desc' | 'created_asc'>('alphabetical');
 
   const loadEmpresas = useCallback(async () => {
     setLoading(true);
@@ -299,80 +298,101 @@ const EmpresasPage = () => {
     return 3;
   }, [isSmallScreen, isMediumScreen]);
 
-  const availableFilters = useMemo(() => {
-    const collectValues = (field: keyof Empresa) => {
-      const values = new Set<string>();
+  const normalizeText = (value: string | null | undefined) =>
+    value
+      ? value
+          .toString()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+      : '';
+
+  const getUniqueValues = useCallback(
+    (key: keyof Empresa) => {
+      const uniqueValues = new Set<string>();
       empresas.forEach((empresa) => {
-        const rawValue = empresa[field];
-        if (typeof rawValue === 'string' && rawValue.trim()) {
-          values.add(rawValue.trim());
+        const rawValue = empresa[key];
+        if (typeof rawValue === 'string') {
+          const trimmed = rawValue.trim();
+          if (trimmed) {
+            uniqueValues.add(trimmed);
+          }
         }
       });
-      return Array.from(values).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-    };
+      return Array.from(uniqueValues).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    },
+    [empresas],
+  );
 
-    return {
-      locations: collectValues('direccion'),
-      users: collectValues('jefe_directo'),
-      emails: collectValues('email'),
-      roles: collectValues('cargo_jefe'),
-      phones: collectValues('telefono'),
-    };
-  }, [empresas]);
+  const locationOptions = useMemo(() => getUniqueValues('direccion'), [getUniqueValues]);
+  const userOptions = useMemo(() => getUniqueValues('jefe_directo'), [getUniqueValues]);
+  const emailOptions = useMemo(() => getUniqueValues('email'), [getUniqueValues]);
+  const roleOptions = useMemo(() => getUniqueValues('cargo_jefe'), [getUniqueValues]);
+  const phoneOptions = useMemo(() => getUniqueValues('telefono'), [getUniqueValues]);
 
   const filteredEmpresas = useMemo(() => {
-    const matchesFilter = (value: string | null | undefined, filterValue: string) => {
-      if (filterValue === 'all') return true;
-      if (filterValue === 'missing') return !value || !value.trim();
-      return (value ?? '').trim().toLowerCase() === filterValue.toLowerCase();
-    };
+    const query = normalizeText(searchQuery);
 
-    const sortedEmpresas = [...empresas].sort((a, b) => {
-      const razonA = a.razon_social?.toLowerCase() ?? '';
-      const razonB = b.razon_social?.toLowerCase() ?? '';
-      const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return empresas.filter((empresa) => {
+      const matchesSearch =
+        query.length === 0 ||
+        [
+          empresa.razon_social,
+          empresa.direccion,
+          empresa.jefe_directo,
+          empresa.cargo_jefe,
+          empresa.telefono,
+          empresa.email,
+        ]
+          .map((value) => normalizeText(value))
+          .some((value) => value.includes(query));
 
-      switch (sortOption) {
-        case 'alphabetical-desc':
-          return razonB.localeCompare(razonA, 'es', { sensitivity: 'base' });
-        case 'creation-newest':
-          return createdB - createdA;
-        case 'creation-oldest':
-          return createdA - createdB;
-        case 'alphabetical-asc':
-        default:
-          return razonA.localeCompare(razonB, 'es', { sensitivity: 'base' });
-      }
+      const matchesLocation =
+        filters.location === 'all' || normalizeText(empresa.direccion) === normalizeText(filters.location);
+      const matchesUser =
+        filters.user === 'all' || normalizeText(empresa.jefe_directo) === normalizeText(filters.user);
+      const matchesEmail =
+        filters.email === 'all' || normalizeText(empresa.email) === normalizeText(filters.email);
+      const matchesRole =
+        filters.role === 'all' || normalizeText(empresa.cargo_jefe) === normalizeText(filters.role);
+      const matchesPhone =
+        filters.phone === 'all' || normalizeText(empresa.telefono) === normalizeText(filters.phone);
+
+      return matchesSearch && matchesLocation && matchesUser && matchesEmail && matchesRole && matchesPhone;
     });
+  }, [empresas, filters.email, filters.location, filters.phone, filters.role, filters.user, searchQuery]);
 
-    return sortedEmpresas.filter((empresa) => {
-      const queryMatches = !normalizedSearchQuery
-        || ['razon_social', 'direccion', 'jefe_directo', 'cargo_jefe', 'telefono', 'email']
-          .some((field) => {
-            const value = empresa[field as keyof Empresa];
-            return typeof value === 'string'
-              ? value.toLowerCase().includes(normalizedSearchQuery)
-              : false;
-          });
-
-      if (!queryMatches) {
-        return false;
-      }
-
-      return (
-        matchesFilter(empresa.direccion, filters.location)
-        && matchesFilter(empresa.jefe_directo, filters.user)
-        && matchesFilter(empresa.email, filters.email)
-        && matchesFilter(empresa.cargo_jefe, filters.role)
-        && matchesFilter(empresa.telefono, filters.phone)
-      );
-    });
-  }, [empresas, filters, normalizedSearchQuery, sortOption]);
+  const sortedEmpresas = useMemo(() => {
+    const sorted = [...filteredEmpresas];
+    switch (sortOption) {
+      case 'created_desc':
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+      case 'created_asc':
+        sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      default:
+        sorted.sort((a, b) => a.razon_social.localeCompare(b.razon_social, 'es', { sensitivity: 'base' }));
+    }
+    return sorted;
+  }, [filteredEmpresas, sortOption]);
 
   const masonryColumns = useMemo(
     () => buildBalancedColumns(sortedEmpresas, columnCount),
     [sortedEmpresas, columnCount],
+  );
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(
+        searchQuery.trim() ||
+          filters.location !== 'all' ||
+          filters.user !== 'all' ||
+          filters.email !== 'all' ||
+          filters.role !== 'all' ||
+          filters.phone !== 'all',
+      ),
+    [filters.email, filters.location, filters.phone, filters.role, filters.user, searchQuery],
   );
 
   const handleFilterChange = (field: keyof typeof filters) => (value: string) => {
@@ -385,6 +405,20 @@ const EmpresasPage = () => {
 
   const handleSelect = (empresaId: string) => {
     setSelectedEmpresaId((current) => (current === empresaId ? null : empresaId));
+  };
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleFilterChange = (field: keyof EmpresaFilters) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setFilters((prev) => ({ ...prev, [field]: event.target.value }));
+    };
+
+  const handleSortChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const value = event.target.value as typeof sortOption;
+    setSortOption(value);
   };
 
   const handleEditOpen = (empresa: Empresa) => {
