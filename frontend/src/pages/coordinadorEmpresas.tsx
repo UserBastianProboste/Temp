@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Grid,
   IconButton,
   Snackbar,
   Stack,
@@ -38,6 +37,8 @@ import DashboardTemplate from '../components/DashboardTemplate';
 import { empresaService } from '../services/empresaService';
 import type { Empresa } from '../types/database';
 import { useAuth } from '../hooks/useAuth';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 interface EmpresaFormState {
   razon_social: string;
@@ -59,33 +60,54 @@ const emptyFormState: EmpresaFormState = {
   email: '',
 };
 
-const getResponsiveGridSize = (index: number, total: number) => {
-  const xs = 12;
+const estimateCardWeight = (empresa: Empresa) => {
+  const baseWeight = 220;
+  const textFields = [
+    empresa.razon_social,
+    empresa.direccion,
+    empresa.jefe_directo,
+    empresa.cargo_jefe,
+    empresa.telefono,
+    empresa.email,
+  ];
 
-  const remainderSm = total % 2;
-  const isLast = index === total - 1;
+  const textContribution = textFields.reduce((total, value) => total + (value?.length ?? 0), 0);
 
-  let sm = 6;
-  if (remainderSm === 1 && isLast) {
-    sm = 12;
+  return baseWeight + textContribution;
+};
+
+const buildBalancedColumns = (items: Empresa[], columnCount: number) => {
+  if (columnCount <= 1) {
+    return [items];
   }
 
-  const remainderMd = total % 3;
-  const isPenultimate = index === total - 2;
+  const columns: Empresa[][] = Array.from({ length: columnCount }, () => []);
+  const weights = new Array(columnCount).fill(0);
 
-  let md = 4;
-  if (remainderMd === 1 && isLast) {
-    md = 12;
-  } else if (remainderMd === 2 && (isLast || isPenultimate)) {
-    md = 6;
-  }
+  items.forEach((item) => {
+    let targetColumn = 0;
+    weights.forEach((weight, index) => {
+      if (weight < weights[targetColumn]) {
+        targetColumn = index;
+      }
+    });
 
-  return { xs, sm, md };
+    columns[targetColumn].push(item);
+    weights[targetColumn] += estimateCardWeight(item);
+  });
+
+  const populatedColumns = columns.filter((column) => column.length > 0);
+
+  return populatedColumns.length > 0 ? populatedColumns : [items];
 };
 
 const EmpresasPage = () => {
   const { role } = useAuth();
   const isCoordinator = role === 'coordinador';
+
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMediumScreen = useMediaQuery(theme.breakpoints.down('md'));
 
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +148,21 @@ const EmpresasPage = () => {
   const selectedEmpresa = useMemo(
     () => empresas.find((empresa) => empresa.id === selectedEmpresaId) ?? null,
     [empresas, selectedEmpresaId],
+  );
+
+  const columnCount = useMemo(() => {
+    if (isSmallScreen) {
+      return 1;
+    }
+    if (isMediumScreen) {
+      return 2;
+    }
+    return 3;
+  }, [isSmallScreen, isMediumScreen]);
+
+  const masonryColumns = useMemo(
+    () => buildBalancedColumns(empresas, columnCount),
+    [empresas, columnCount],
   );
 
   const handleSelect = (empresaId: string) => {
@@ -312,109 +349,117 @@ const EmpresasPage = () => {
                 : 'Consulta más tarde o comunica a tu coordinador.'}
             </Alert>
           ) : (
-            <Grid container spacing={3}>
-              {empresas.map((empresa, index) => {
-                const isSelected = selectedEmpresaId === empresa.id;
-                const { xs, sm, md } = getResponsiveGridSize(index, empresas.length);
-                return (
-                  <Grid item xs={xs} sm={sm} md={md} key={empresa.id}>
-                    <Card
-                      sx={{
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        borderRadius: 3,
-                        border: '1px solid',
-                        borderColor: isSelected ? 'primary.main' : 'divider',
-                        boxShadow: isSelected ? 8 : 3,
-                        transform: isSelected ? 'translateY(-4px)' : 'none',
-                        transition: 'all 0.2s ease-in-out',
-                        '&:hover': {
-                          boxShadow: 8,
-                          transform: 'translateY(-4px)',
-                        },
-                      }}
-                    >
-                      <CardHeader
-                        avatar={(
-                          <Avatar sx={{ bgcolor: 'primary.main' }}>
-                            <BusinessIcon />
-                          </Avatar>
-                        )}
-                        title={
-                          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-                            {empresa.razon_social}
-                          </Typography>
-                        }
-                        subheader={empresa.cargo_jefe ? `Contacto: ${empresa.cargo_jefe}` : undefined}
-                      />
-
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Stack spacing={1.5}>
-                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                            <LocationOnIcon color="action" fontSize="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              {empresa.direccion || 'Dirección no registrada'}
-                            </Typography>
-                          </Stack>
-                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                            <PersonIcon color="action" fontSize="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              {empresa.jefe_directo || 'Sin jefe directo asignado'}
-                            </Typography>
-                          </Stack>
-                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                            <WorkIcon color="action" fontSize="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              {empresa.cargo_jefe || 'Sin cargo informado'}
-                            </Typography>
-                          </Stack>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
-                            <PhoneIcon color="action" fontSize="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              {empresa.telefono || 'Sin teléfono registrado'}
-                            </Typography>
-                          </Stack>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
-                            <EmailIcon color="action" fontSize="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              {empresa.email || 'Sin correo registrado'}
-                            </Typography>
-                          </Stack>
-                        </Stack>
-                      </CardContent>
-
-                      <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                          <Button
-                            fullWidth
-                            variant={isSelected ? 'contained' : 'outlined'}
-                            onClick={() => handleSelect(empresa.id)}
-                          >
-                            {isSelected ? 'Seleccionada' : 'Seleccionar'}
-                          </Button>
-
-                          {isCoordinator && (
-                            <Stack direction="row" spacing={1} sx={{ ml: 1 }}>
-                              <Tooltip title="Editar">
-                                <IconButton color="primary" onClick={() => handleEditOpen(empresa)}>
-                                  <EditIcon />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Eliminar">
-                                <IconButton color="error" onClick={() => handleDeleteOpen(empresa)}>
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Tooltip>
-                            </Stack>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: masonryColumns.length === 1 ? 'column' : 'row',
+                gap: 3,
+              }}
+            >
+              {masonryColumns.map((column, columnIndex) => (
+                <Stack key={columnIndex} spacing={3} sx={{ flex: 1 }}>
+                  {column.map((empresa) => {
+                    const isSelected = selectedEmpresaId === empresa.id;
+                    return (
+                      <Card
+                        key={empresa.id}
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          borderRadius: 3,
+                          border: '1px solid',
+                          borderColor: isSelected ? 'primary.main' : 'divider',
+                          boxShadow: isSelected ? 8 : 3,
+                          transform: isSelected ? 'translateY(-4px)' : 'none',
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            boxShadow: 8,
+                            transform: 'translateY(-4px)',
+                          },
+                        }}
+                      >
+                        <CardHeader
+                          avatar={(
+                            <Avatar sx={{ bgcolor: 'primary.main' }}>
+                              <BusinessIcon />
+                            </Avatar>
                           )}
-                        </Stack>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
+                          title={
+                            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                              {empresa.razon_social}
+                            </Typography>
+                          }
+                          subheader={empresa.cargo_jefe ? `Contacto: ${empresa.cargo_jefe}` : undefined}
+                        />
+
+                        <CardContent sx={{ flexGrow: 1 }}>
+                          <Stack spacing={1.5}>
+                            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                              <LocationOnIcon color="action" fontSize="small" />
+                              <Typography variant="body2" color="text.secondary">
+                                {empresa.direccion || 'Dirección no registrada'}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                              <PersonIcon color="action" fontSize="small" />
+                              <Typography variant="body2" color="text.secondary">
+                                {empresa.jefe_directo || 'Sin jefe directo asignado'}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                              <WorkIcon color="action" fontSize="small" />
+                              <Typography variant="body2" color="text.secondary">
+                                {empresa.cargo_jefe || 'Sin cargo informado'}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1.5} alignItems="center">
+                              <PhoneIcon color="action" fontSize="small" />
+                              <Typography variant="body2" color="text.secondary">
+                                {empresa.telefono || 'Sin teléfono registrado'}
+                              </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={1.5} alignItems="center">
+                              <EmailIcon color="action" fontSize="small" />
+                              <Typography variant="body2" color="text.secondary">
+                                {empresa.email || 'Sin correo registrado'}
+                              </Typography>
+                            </Stack>
+                          </Stack>
+                        </CardContent>
+
+                        <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                          <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                            <Button
+                              fullWidth
+                              variant={isSelected ? 'contained' : 'outlined'}
+                              onClick={() => handleSelect(empresa.id)}
+                            >
+                              {isSelected ? 'Seleccionada' : 'Seleccionar'}
+                            </Button>
+
+                            {isCoordinator && (
+                              <Stack direction="row" spacing={1} sx={{ ml: 1 }}>
+                                <Tooltip title="Editar">
+                                  <IconButton color="primary" onClick={() => handleEditOpen(empresa)}>
+                                    <EditIcon />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Eliminar">
+                                  <IconButton color="error" onClick={() => handleDeleteOpen(empresa)}>
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
+                          </Stack>
+                        </CardActions>
+                      </Card>
+                    );
+                  })}
+                </Stack>
+              ))}
+            </Box>
           )}
         </Stack>
       </Box>
