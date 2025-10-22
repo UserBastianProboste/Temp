@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import DashboardTemplate from '../components/DashboardTemplate';
+import DashboardTemplate from '../../../../consultoria_informatica/frontend/src/components/DashboardTemplate';
 
 const CoordinadorEstudiantes = () => (
   <DashboardTemplate title="Seguimiento de estudiantes">

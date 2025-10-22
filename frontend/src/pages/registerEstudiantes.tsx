@@ -24,9 +24,9 @@ import Person from '@mui/icons-material/Person';
 import Phone from '@mui/icons-material/Phone';
 import School from '@mui/icons-material/School';
 import Verified from '@mui/icons-material/Verified';
-import { useAuth } from '../hooks/useAuth';
-import { estudianteService } from '../services/estudianteService';
-import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../../../../consultoria_informatica/frontend/src/hooks/useAuth';
+import { estudianteService } from '../../../../consultoria_informatica/frontend/src/services/estudianteService';
+import { supabase } from '../../../../consultoria_informatica/frontend/src/services/supabaseClient';
 
 interface RegisterFormData {
   email: string;

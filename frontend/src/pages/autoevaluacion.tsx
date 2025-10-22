@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material";
-import DashboardTemplate from "../components/DashboardTemplate";
+import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
 import {
   Box,
   Typography,
@@ -20,7 +20,7 @@ import {
   Paper,
   Button,
 } from "@mui/material";
-import { guardarAutoevaluacion, getAutoevaluacion, getPracticaEstudiantePorId } from "../services/autoevaluacion";
+import { guardarAutoevaluacion, getAutoevaluacion, getPracticaEstudiantePorId } from "../../../../consultoria_informatica/frontend/src/services/autoevaluacion";
 
 const criterios = ["Siempre", "Frecuentemente", "A veces", "Nunca"];
 

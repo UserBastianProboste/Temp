@@ -3,7 +3,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelIcon from "@mui/icons-material/Cancel";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import DashboardTemplate from "../components/DashboardTemplate";
+import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
 import {
   Box,
   Typography,
@@ -19,7 +19,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
-import { supabase } from "../services/supabaseClient";
+import { supabase } from "../../../../consultoria_informatica/frontend/src/services/supabaseClient";
 
 type Archivo = {
   name: string;

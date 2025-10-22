@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
 import type { FC } from "react";
-import { supabase } from "../services/supabaseClient";
+import { supabase } from "../../../../consultoria_informatica/frontend/src/services/supabaseClient";
 import DownloadIcon from "@mui/icons-material/Download";
-import DashboardTemplate from "../components/DashboardTemplate";
+import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
 import {
   Box,
   Typography,

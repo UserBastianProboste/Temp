@@ -1,7 +1,7 @@
 // src/pages/PracticaProfesionalForm.tsx
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import DashboardTemplate from '../components/DashboardTemplate';
+import { useAuth } from '../../../../consultoria_informatica/frontend/src/hooks/useAuth';
+import DashboardTemplate from '../../../../consultoria_informatica/frontend/src/components/DashboardTemplate';
 import {
   Container,
   Paper,
@@ -16,7 +16,7 @@ import {
   Select,
   MenuItem
 } from '@mui/material';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from '../../../../consultoria_informatica/frontend/src/services/supabaseClient';
 
 interface FormData {
   razon_social: string;

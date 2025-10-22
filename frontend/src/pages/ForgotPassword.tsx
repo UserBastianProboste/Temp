@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { Email as EmailIcon } from '@mui/icons-material';
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../services/supabaseClient";
+import { supabase } from "../../../../consultoria_informatica/frontend/src/services/supabaseClient";
 
 
 const ForgotPassword: React.FC = () => {

@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Button, Typography, Card, CardContent } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import DashboardTemplate from "../components/DashboardTemplate";
-import { getPracticasEstudiante } from "../services/autoevaluacion";
+import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
+import { getPracticasEstudiante } from "../../../../consultoria_informatica/frontend/src/services/autoevaluacion";
 
 const SeleccionPractica: React.FC = () => {
   const [practicas, setPracticas] = useState<any[]>([]);

@@ -36,13 +36,13 @@ import SendIcon from '@mui/icons-material/Send';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import SearchIcon from '@mui/icons-material/Search';
 
-import DashboardTemplate from '../components/DashboardTemplate';
-import { supabase } from '../services/supabaseClient';
-import { practicaService } from '../services/practicaService';
-import { evaluacionSupervisorService } from '../services/evaluacionSupervisorService';
+import DashboardTemplate from '../../../../consultoria_informatica/frontend/src/components/DashboardTemplate';
+import { supabase } from '../../../../consultoria_informatica/frontend/src/services/supabaseClient';
+import { practicaService } from '../../../../consultoria_informatica/frontend/src/services/practicaService';
+import { evaluacionSupervisorService } from '../../../../consultoria_informatica/frontend/src/services/evaluacionSupervisorService';
 
 
-import type { Practica } from '../types/database';
+import type { Practica } from '../../../../consultoria_informatica/frontend/src/types/database';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 // PAGINACIÓN: cantidad de prácticas a mostrar por página

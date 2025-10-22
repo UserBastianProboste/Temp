@@ -20,8 +20,8 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
-import { evaluacionSupervisorService } from '../services/evaluacionSupervisorService';
-import type { EvaluacionData } from '../services/evaluacionSupervisorService';
+import { evaluacionSupervisorService } from '../../../../consultoria_informatica/frontend/src/services/evaluacionSupervisorService';
+import type { EvaluacionData } from '../../../../consultoria_informatica/frontend/src/services/evaluacionSupervisorService';
 
 const EvaluacionSupervisorPublica = () => {
   const { token } = useParams<{ token: string }>();

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import DashboardTemplate from "../components/DashboardTemplate";
+import DashboardTemplate from "../../../../consultoria_informatica/frontend/src/components/DashboardTemplate";
 import {
   Box,
   Typography,
@@ -11,8 +11,8 @@ import {
 } from "@mui/material";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { AssignmentLate } from "@mui/icons-material";
-import { supabase } from "../services/supabaseClient";
-import { getPracticasEstudiante } from "../services/autoevaluacion";
+import { supabase } from "../../../../consultoria_informatica/frontend/src/services/supabaseClient";
+import { getPracticasEstudiante } from "../../../../consultoria_informatica/frontend/src/services/autoevaluacion";
 
 /** cálculo de avance por tiempo (igual que el tuyo) */
 const calcularAvancePorTiempo = (fechaInicioStr: string, fechaTerminoStr: string) => {
