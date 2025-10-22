@@ -1,17 +1,529 @@
-import { Box, Typography } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  CardHeader,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Grid,
+  IconButton,
+  Snackbar,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import type { AlertColor } from '@mui/material';
+import {
+  Business as BusinessIcon,
+  LocationOn as LocationOnIcon,
+  Person as PersonIcon,
+  Work as WorkIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
+} from '@mui/icons-material';
 import DashboardTemplate from '../components/DashboardTemplate';
+import { empresaService } from '../services/empresaService';
+import type { Empresa } from '../types/database';
+import { useAuth } from '../hooks/useAuth';
 
-const CoordinadorEmpresas = () => (
-  <DashboardTemplate title="Relación con empresas">
-    <Box sx={{ py: 6, textAlign: 'center' }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Empresas colaboradoras
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Desde esta sección podrás administrar la información y convenios con las empresas asociadas.
-      </Typography>
-    </Box>
-  </DashboardTemplate>
-);
+interface EmpresaFormState {
+  razon_social: string;
+  direccion: string;
+  jefe_directo: string;
+  cargo_jefe: string;
+  telefono: string;
+  email: string;
+}
 
-export default CoordinadorEmpresas;
+type EmpresaFormErrors = Partial<Record<keyof EmpresaFormState, string>>;
+
+const emptyFormState: EmpresaFormState = {
+  razon_social: '',
+  direccion: '',
+  jefe_directo: '',
+  cargo_jefe: '',
+  telefono: '',
+  email: '',
+};
+
+const getResponsiveGridSize = (index: number, total: number) => {
+  const xs = 12;
+
+  const remainderSm = total % 2;
+  const isLast = index === total - 1;
+
+  let sm = 6;
+  if (remainderSm === 1 && isLast) {
+    sm = 12;
+  }
+
+  const remainderMd = total % 3;
+  const isPenultimate = index === total - 2;
+
+  let md = 4;
+  if (remainderMd === 1 && isLast) {
+    md = 12;
+  } else if (remainderMd === 2 && (isLast || isPenultimate)) {
+    md = 6;
+  }
+
+  return { xs, sm, md };
+};
+
+const EmpresasPage = () => {
+  const { role } = useAuth();
+  const isCoordinator = role === 'coordinador';
+
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
+
+  const [editTarget, setEditTarget] = useState<Empresa | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Empresa | null>(null);
+  const [formValues, setFormValues] = useState<EmpresaFormState>(emptyFormState);
+  const [formErrors, setFormErrors] = useState<EmpresaFormErrors>({});
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: AlertColor }>(
+    { open: false, message: '', severity: 'success' },
+  );
+
+  const loadEmpresas = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: fetchError } = await empresaService.getAll();
+      if (fetchError) {
+        throw new Error(fetchError.message ?? 'No se pudo obtener el listado de empresas.');
+      }
+      setEmpresas(data ?? []);
+    } catch (err) {
+      console.error('Error al cargar empresas', err);
+      setError(err instanceof Error ? err.message : 'Ocurrió un error al cargar las empresas.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadEmpresas();
+  }, [loadEmpresas]);
+
+  const selectedEmpresa = useMemo(
+    () => empresas.find((empresa) => empresa.id === selectedEmpresaId) ?? null,
+    [empresas, selectedEmpresaId],
+  );
+
+  const handleSelect = (empresaId: string) => {
+    setSelectedEmpresaId((current) => (current === empresaId ? null : empresaId));
+  };
+
+  const handleEditOpen = (empresa: Empresa) => {
+    setEditTarget(empresa);
+    setFormValues({
+      razon_social: empresa.razon_social ?? '',
+      direccion: empresa.direccion ?? '',
+      jefe_directo: empresa.jefe_directo ?? '',
+      cargo_jefe: empresa.cargo_jefe ?? '',
+      telefono: empresa.telefono ?? '',
+      email: empresa.email ?? '',
+    });
+    setFormErrors({});
+  };
+
+  const handleEditClose = () => {
+    if (saving) return;
+    setEditTarget(null);
+    setFormValues(emptyFormState);
+    setFormErrors({});
+  };
+
+  const handleDeleteOpen = (empresa: Empresa) => {
+    setDeleteTarget(empresa);
+  };
+
+  const handleDeleteClose = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
+  };
+
+  const handleFormChange = (field: keyof EmpresaFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+    setFormValues((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: EmpresaFormErrors = {};
+
+    (Object.keys(formValues) as Array<keyof EmpresaFormState>).forEach((field) => {
+      if (!formValues[field]?.trim()) {
+        errors[field] = 'Campo obligatorio';
+      }
+    });
+
+    if (formValues.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formValues.email)) {
+      errors.email = 'Correo electrónico inválido';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const showSnackbar = (message: string, severity: AlertColor) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleEditSave = async () => {
+    if (!editTarget || !validateForm()) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data, error: updateError } = await empresaService.update(editTarget.id, {
+        ...formValues,
+      });
+
+      if (updateError) {
+        throw new Error(updateError.message ?? 'No se pudo actualizar la empresa.');
+      }
+
+      if (data) {
+        setEmpresas((prev) => prev.map((empresa) => (empresa.id === data.id ? data : empresa)));
+      } else {
+        await loadEmpresas();
+      }
+
+      showSnackbar('Empresa actualizada correctamente.', 'success');
+      setEditTarget(null);
+      setFormValues(emptyFormState);
+    } catch (err) {
+      console.error('Error al actualizar empresa', err);
+      showSnackbar(
+        err instanceof Error ? err.message : 'Ocurrió un error al actualizar la empresa.',
+        'error',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    try {
+      const { error: deleteError } = await empresaService.delete(deleteTarget.id);
+      if (deleteError) {
+        throw new Error(deleteError.message ?? 'No se pudo eliminar la empresa.');
+      }
+
+      setEmpresas((prev) => prev.filter((empresa) => empresa.id !== deleteTarget.id));
+      setSelectedEmpresaId((current) => (current === deleteTarget.id ? null : current));
+      showSnackbar('Empresa eliminada correctamente.', 'success');
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Error al eliminar empresa', err);
+      showSnackbar(
+        err instanceof Error ? err.message : 'Ocurrió un error al eliminar la empresa.',
+        'error',
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCloseSnackbar = (_event?: unknown, reason?: string) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
+  return (
+    <DashboardTemplate title="Relación con empresas">
+      <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 4, md: 6 } }}>
+        <Stack spacing={3}>
+          <Box textAlign="center">
+            <Typography variant="h4" component="h1" gutterBottom>
+              Empresas colaboradoras
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: 'auto' }}>
+              Consulta el listado actualizado de organizaciones disponibles para prácticas. {isCoordinator
+                ? 'Como coordinador puedes mantener la información al día.'
+                : 'Como estudiante selecciona la opción que se ajuste a tus intereses.'}
+            </Typography>
+          </Box>
+
+          {selectedEmpresa && (
+            <Alert
+              icon={<CheckCircleOutlineIcon fontSize="inherit" />}
+              severity="info"
+              sx={{ borderRadius: 2 }}
+              action={(
+                <Button color="inherit" size="small" onClick={() => setSelectedEmpresaId(null)}>
+                  Quitar selección
+                </Button>
+              )}
+            >
+              Has seleccionado <strong>{selectedEmpresa.razon_social}</strong> como referencia.
+            </Alert>
+          )}
+
+          {error && (
+            <Alert
+              severity="error"
+              action={(
+                <Button color="inherit" size="small" onClick={() => void loadEmpresas()}>
+                  Reintentar
+                </Button>
+              )}
+              sx={{ borderRadius: 2 }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          {loading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : !error && empresas.length === 0 ? (
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              Aún no hay empresas registradas. {isCoordinator
+                ? 'Cuando registres una nueva empresa aparecerá aquí.'
+                : 'Consulta más tarde o comunica a tu coordinador.'}
+            </Alert>
+          ) : (
+            <Grid container spacing={3}>
+              {empresas.map((empresa, index) => {
+                const isSelected = selectedEmpresaId === empresa.id;
+                const { xs, sm, md } = getResponsiveGridSize(index, empresas.length);
+                return (
+                  <Grid item xs={xs} sm={sm} md={md} key={empresa.id}>
+                    <Card
+                      sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        borderRadius: 3,
+                        border: '1px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        boxShadow: isSelected ? 8 : 3,
+                        transform: isSelected ? 'translateY(-4px)' : 'none',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          boxShadow: 8,
+                          transform: 'translateY(-4px)',
+                        },
+                      }}
+                    >
+                      <CardHeader
+                        avatar={(
+                          <Avatar sx={{ bgcolor: 'primary.main' }}>
+                            <BusinessIcon />
+                          </Avatar>
+                        )}
+                        title={
+                          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                            {empresa.razon_social}
+                          </Typography>
+                        }
+                        subheader={empresa.cargo_jefe ? `Contacto: ${empresa.cargo_jefe}` : undefined}
+                      />
+
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Stack spacing={1.5}>
+                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                            <LocationOnIcon color="action" fontSize="small" />
+                            <Typography variant="body2" color="text.secondary">
+                              {empresa.direccion || 'Dirección no registrada'}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                            <PersonIcon color="action" fontSize="small" />
+                            <Typography variant="body2" color="text.secondary">
+                              {empresa.jefe_directo || 'Sin jefe directo asignado'}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                            <WorkIcon color="action" fontSize="small" />
+                            <Typography variant="body2" color="text.secondary">
+                              {empresa.cargo_jefe || 'Sin cargo informado'}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1.5} alignItems="center">
+                            <PhoneIcon color="action" fontSize="small" />
+                            <Typography variant="body2" color="text.secondary">
+                              {empresa.telefono || 'Sin teléfono registrado'}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1.5} alignItems="center">
+                            <EmailIcon color="action" fontSize="small" />
+                            <Typography variant="body2" color="text.secondary">
+                              {empresa.email || 'Sin correo registrado'}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      </CardContent>
+
+                      <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                          <Button
+                            fullWidth
+                            variant={isSelected ? 'contained' : 'outlined'}
+                            onClick={() => handleSelect(empresa.id)}
+                          >
+                            {isSelected ? 'Seleccionada' : 'Seleccionar'}
+                          </Button>
+
+                          {isCoordinator && (
+                            <Stack direction="row" spacing={1} sx={{ ml: 1 }}>
+                              <Tooltip title="Editar">
+                                <IconButton color="primary" onClick={() => handleEditOpen(empresa)}>
+                                  <EditIcon />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Eliminar">
+                                <IconButton color="error" onClick={() => handleDeleteOpen(empresa)}>
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          )}
+                        </Stack>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </Stack>
+      </Box>
+
+      <Dialog open={Boolean(editTarget)} onClose={handleEditClose} fullWidth maxWidth="sm">
+        <DialogTitle>Editar empresa</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Razón social"
+              value={formValues.razon_social}
+              onChange={handleFormChange('razon_social')}
+              error={Boolean(formErrors.razon_social)}
+              helperText={formErrors.razon_social}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Dirección"
+              value={formValues.direccion}
+              onChange={handleFormChange('direccion')}
+              error={Boolean(formErrors.direccion)}
+              helperText={formErrors.direccion}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Jefe directo"
+              value={formValues.jefe_directo}
+              onChange={handleFormChange('jefe_directo')}
+              error={Boolean(formErrors.jefe_directo)}
+              helperText={formErrors.jefe_directo}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Cargo del jefe"
+              value={formValues.cargo_jefe}
+              onChange={handleFormChange('cargo_jefe')}
+              error={Boolean(formErrors.cargo_jefe)}
+              helperText={formErrors.cargo_jefe}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Teléfono"
+              value={formValues.telefono}
+              onChange={handleFormChange('telefono')}
+              error={Boolean(formErrors.telefono)}
+              helperText={formErrors.telefono}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Correo electrónico"
+              value={formValues.email}
+              onChange={handleFormChange('email')}
+              error={Boolean(formErrors.email)}
+              helperText={formErrors.email}
+              required
+              fullWidth
+              type="email"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={() => void handleEditSave()} variant="contained" disabled={saving}>
+            {saving ? 'Guardando…' : 'Guardar cambios'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(deleteTarget)} onClose={handleDeleteClose} maxWidth="xs" fullWidth>
+        <DialogTitle>Eliminar empresa</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Deseas eliminar la empresa «{deleteTarget?.razon_social}»? Esta acción no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteClose} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => void handleDeleteConfirm()}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Eliminando…' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </DashboardTemplate>
+  );
+};
+
+export default EmpresasPage;
