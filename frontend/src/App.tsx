@@ -55,7 +55,6 @@ function App() {
                 <Route path='/estudiante/seleccion-practica' element={<SeleccionPractica />} />
                 <Route path='/estudiante/autoevaluacion/:practicaId' element={<Autoevaluacion />} />
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
-                <Route path='/estudiante/empresas' element={<CoordinadorEmpresas />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
