@@ -40,6 +40,7 @@ import {
   DriveFolderUploadRounded as UploadIcon,
   HelpOutline as HelpIcon,
   FolderCopySharp as FoldertIcon,
+  PersonAddAlt as PersonAddIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -94,6 +95,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     { label: 'Panel', icon: <DashboardIcon />, to: '/coordinador/dashboard' },
     { label: 'Prácticas', icon: <AssignmentIcon />, to: '/coordinador/practicas' },
     { label: 'Estudiantes', icon: <GroupIcon />, to: '/coordinador/estudiantes' },
+    { label: 'Crear usuario', icon: <PersonAddIcon />, to: '/coordinador/crear-usuario' },
     { label: 'Informes de Estudiantes', icon: <FoldertIcon />, to: '/coordinador/informes-estudiante' },
     { label: 'Empresas', icon: <BusinessIcon />, to: '/coordinador/empresas' },
     { label: 'Autoevaluaciones', icon: <FeedbackIcon />, to: '/coordinador/autoevaluaciones' },

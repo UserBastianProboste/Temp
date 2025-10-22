@@ -5,10 +5,10 @@ import {
   CardContent,
   Chip,
   Divider,
-  Grid,
   Stack,
   Typography,
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import BusinessIcon from '@mui/icons-material/Business';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import LocationOnIcon from '@mui/icons-material/LocationOn';

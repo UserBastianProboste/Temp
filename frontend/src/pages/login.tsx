@@ -239,14 +239,7 @@ const Login: React.FC = () => {
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                ¿No tienes una cuenta?{' '}
-                <Button
-                  variant="text"
-                  onClick={() => navigate('/register')}
-                  sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
-                >
-                  Regístrate aquí
-                </Button>
+                ¿No tienes una cuenta? Contacta a tu coordinador para gestionarla.
               </Typography>
             </Box>
           </Box>
