@@ -9,6 +9,12 @@ import {
   CardContent,
   CardHeader,
   CircularProgress,
+  Fade,
+  FormControl,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
   Dialog,
   DialogActions,
   DialogContent,
@@ -61,6 +67,18 @@ interface EmpresaFormState {
 }
 
 type EmpresaFormErrors = Partial<Record<keyof EmpresaFormState, string>>;
+
+type SortOption = 'alphabetical-asc' | 'alphabetical-desc' | 'newest' | 'oldest';
+
+type TelefonoFilterOption = 'all' | 'with' | 'without';
+
+interface FiltersState {
+  ubicacion: string;
+  usuario: string;
+  mail: string;
+  cargo: string;
+  telefonoDisponibility: TelefonoFilterOption;
+}
 
 const emptyFormState: EmpresaFormState = {
   razon_social: '',
@@ -136,6 +154,15 @@ const EmpresasPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<FiltersState>({
+    ubicacion: '',
+    usuario: '',
+    mail: '',
+    cargo: '',
+    telefonoDisponibility: 'all',
+  });
+  const [sortOption, setSortOption] = useState<SortOption>('alphabetical-asc');
 
   const [editTarget, setEditTarget] = useState<Empresa | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Empresa | null>(null);
@@ -803,8 +830,9 @@ const EmpresasPage = () => {
             >
               {masonryColumns.map((column, columnIndex) => (
                 <Stack key={columnIndex} spacing={3} sx={{ flex: 1 }}>
-                  {column.map((empresa) => {
+                  {column.map((empresa, itemIndex) => {
                     const isSelected = selectedEmpresaId === empresa.id;
+                    const fadeDelay = Math.min((columnIndex * 4 + itemIndex) * 60, 360);
                     return (
                       <Grow
                         in
