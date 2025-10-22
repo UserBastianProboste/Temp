@@ -29,6 +29,7 @@ import {
   Typography,
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import AddIcon from '@mui/icons-material/PersonAddAlt';
 import UploadIcon from '@mui/icons-material/UploadFile';
 import SearchIcon from '@mui/icons-material/Search';
@@ -90,9 +91,52 @@ const DEFAULT_FORM: StudentFormState = {
 const REQUIRED_COLUMNS = ['Nombre', 'Apellido', 'Email', 'Telefono', 'Carrera', 'Semestre', 'Sede'];
 const OPTIONAL_PASSWORD_KEYS = ['Password', 'Contraseña', 'Contrasena'];
 
-const ITEMS_PER_PAGE = 10;
+const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 70, 100, 200] as const;
 const SEDES_VALIDAS = ['Sede Llano', 'Sede Providencia', 'Sede Temuco', 'Sede Talca'];
 const SEMESTRES_VALIDOS = Array.from({ length: 12 }, (_, index) => String(index + 1));
+
+const TABLE_COLUMN_STYLES = {
+  nombre: {
+    width: { xs: '30%', sm: '22%' },
+    maxWidth: { xs: '100%', sm: 280 },
+  },
+  email: {
+    width: { xs: '30%', sm: '22%' },
+    maxWidth: { xs: '100%', sm: 280 },
+  },
+  telefono: {
+    width: { xs: '20%', sm: '12%' },
+    maxWidth: { xs: '100%', sm: 160 },
+  },
+  carrera: {
+    width: { xs: '20%', sm: '14%' },
+    maxWidth: { xs: '100%', sm: 180 },
+  },
+  sede: {
+    width: { xs: '20%', sm: '12%' },
+    maxWidth: { xs: '100%', sm: 160 },
+  },
+  semestre: {
+    width: { xs: '15%', sm: '8%' },
+    maxWidth: { xs: '100%', sm: 100 },
+  },
+  estado: {
+    width: { xs: '15%', sm: '5%' },
+    maxWidth: { xs: '100%', sm: 80 },
+  },
+  acciones: {
+    width: { xs: '20%', sm: '5%' },
+    maxWidth: { xs: '100%', sm: 120 },
+  },
+} as const;
+
+const CHIP_STYLES = {
+  maxWidth: '100%',
+  '& .MuiChip-label': {
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+};
 
 const EMPTY_ERRORS: FormErrors = {
   nombre: '',
@@ -174,6 +218,7 @@ const CoordinadorEstudiantes = () => {
   const [orderBy, setOrderBy] = useState<OrderBy>('created_at');
   const [order, setOrder] = useState<Order>('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(ROWS_PER_PAGE_OPTIONS[0]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -317,11 +362,11 @@ const CoordinadorEstudiantes = () => {
     });
   }, [students, search, filterCarrera, filterSede, filterSemestre, orderBy, order]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / rowsPerPage));
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterCarrera, filterSede, filterSemestre]);
+  }, [search, filterCarrera, filterSede, filterSemestre, rowsPerPage]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -330,9 +375,9 @@ const CoordinadorEstudiantes = () => {
   }, [currentPage, totalPages]);
 
   const paginatedStudents = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredStudents.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredStudents, currentPage]);
+    const start = (currentPage - 1) * rowsPerPage;
+    return filteredStudents.slice(start, start + rowsPerPage);
+  }, [filteredStudents, currentPage, rowsPerPage]);
 
   const handleRequestSort = (property: OrderBy) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -342,6 +387,11 @@ const CoordinadorEstudiantes = () => {
 
   const handlePageChange = (_event: ChangeEvent<unknown>, page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleRowsPerPageChange = (event: SelectChangeEvent<string>) => {
+    const value = Number(event.target.value);
+    setRowsPerPage(value);
   };
 
   const resetForm = () => {
@@ -870,11 +920,11 @@ const CoordinadorEstudiantes = () => {
           </Card>
         ) : (
           <>
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 3 }}>
-              <Table>
+            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 3, overflowX: 'hidden' }}>
+              <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>
+                    <TableCell sx={{ ...TABLE_COLUMN_STYLES.nombre }}>
                       <TableSortLabel
                         active={orderBy === 'nombre'}
                         direction={orderBy === 'nombre' ? order : 'asc'}
@@ -883,7 +933,7 @@ const CoordinadorEstudiantes = () => {
                         <strong>Nombre</strong>
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ ...TABLE_COLUMN_STYLES.email }}>
                       <TableSortLabel
                         active={orderBy === 'email'}
                         direction={orderBy === 'email' ? order : 'asc'}
@@ -892,8 +942,10 @@ const CoordinadorEstudiantes = () => {
                         <strong>Email</strong>
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell><strong>Teléfono</strong></TableCell>
-                    <TableCell>
+                    <TableCell sx={{ ...TABLE_COLUMN_STYLES.telefono }}>
+                      <strong>Teléfono</strong>
+                    </TableCell>
+                    <TableCell sx={{ ...TABLE_COLUMN_STYLES.carrera }}>
                       <TableSortLabel
                         active={orderBy === 'carrera'}
                         direction={orderBy === 'carrera' ? order : 'asc'}
@@ -902,7 +954,7 @@ const CoordinadorEstudiantes = () => {
                         <strong>Carrera</strong>
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ ...TABLE_COLUMN_STYLES.sede }}>
                       <TableSortLabel
                         active={orderBy === 'sede'}
                         direction={orderBy === 'sede' ? order : 'asc'}
@@ -911,7 +963,7 @@ const CoordinadorEstudiantes = () => {
                         <strong>Sede</strong>
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ ...TABLE_COLUMN_STYLES.semestre }}>
                       <TableSortLabel
                         active={orderBy === 'semestre'}
                         direction={orderBy === 'semestre' ? order : 'asc'}
@@ -920,8 +972,12 @@ const CoordinadorEstudiantes = () => {
                         <strong>Semestre</strong>
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell align="center"><strong>Estado</strong></TableCell>
-                    <TableCell align="center"><strong>Acciones</strong></TableCell>
+                    <TableCell align="center" sx={{ ...TABLE_COLUMN_STYLES.estado }}>
+                      <strong>Estado</strong>
+                    </TableCell>
+                    <TableCell align="center" sx={{ ...TABLE_COLUMN_STYLES.acciones }}>
+                      <strong>Acciones</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -937,39 +993,79 @@ const CoordinadorEstudiantes = () => {
                         sx={{
                           backgroundColor: complete ? 'inherit' : 'rgba(255, 244, 229, 0.6)',
                           '&:last-of-type td, &:last-of-type th': { border: 0 },
+                          height: 64,
                         }}
                       >
-                        <TableCell>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
-                            <Typography fontWeight={600} color="text.primary">
+                        <TableCell sx={{ ...TABLE_COLUMN_STYLES.nombre, verticalAlign: 'middle' }}>
+                          <Tooltip title={`${student.nombre} ${student.apellido}`}>
+                            <Typography
+                              fontWeight={600}
+                              color="text.primary"
+                              noWrap
+                              sx={{ display: 'block' }}
+                            >
                               {student.nombre} {student.apellido}
                             </Typography>
-                          </Stack>
+                          </Tooltip>
                         </TableCell>
-                        <TableCell>{student.email}</TableCell>
-                        <TableCell>{student.telefono || '—'}</TableCell>
-                        <TableCell>
+                        <TableCell sx={{ ...TABLE_COLUMN_STYLES.email, verticalAlign: 'middle' }}>
+                          <Tooltip title={student.email}>
+                            <Typography color="text.secondary" noWrap sx={{ display: 'block' }}>
+                              {student.email}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell sx={{ ...TABLE_COLUMN_STYLES.telefono, verticalAlign: 'middle' }}>
+                          <Typography color="text.secondary" noWrap sx={{ display: 'block' }}>
+                            {student.telefono || '—'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ ...TABLE_COLUMN_STYLES.carrera, verticalAlign: 'middle' }}>
                           {student.carrera ? (
-                            <Chip label={student.carrera} size="small" color="primary" variant="outlined" />
+                            <Tooltip title={student.carrera}>
+                              <Chip
+                                label={student.carrera}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={CHIP_STYLES}
+                              />
+                            </Tooltip>
                           ) : (
                             '—'
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ ...TABLE_COLUMN_STYLES.sede, verticalAlign: 'middle' }}>
                           {student.sede ? (
-                            <Chip label={sedeDisplay} size="small" color="secondary" variant="outlined" />
+                            <Tooltip title={sedeDisplay}>
+                              <Chip
+                                label={sedeDisplay}
+                                size="small"
+                                color="secondary"
+                                variant="outlined"
+                                sx={CHIP_STYLES}
+                              />
+                            </Tooltip>
                           ) : (
                             '—'
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ ...TABLE_COLUMN_STYLES.semestre, verticalAlign: 'middle' }}>
                           {student.semestre ? (
-                            <Chip label={semestreDisplay} size="small" color="primary" variant="outlined" />
+                            <Tooltip title={semestreDisplay}>
+                              <Chip
+                                label={semestreDisplay}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={CHIP_STYLES}
+                              />
+                            </Tooltip>
                           ) : (
                             '—'
                           )}
                         </TableCell>
-                        <TableCell align="center">
+                        <TableCell align="center" sx={{ ...TABLE_COLUMN_STYLES.estado, verticalAlign: 'middle' }}>
                           {complete ? (
                             <Tooltip title="Estudiante con información completa">
                               <CheckIcon color="success" fontSize="small" />
@@ -980,7 +1076,7 @@ const CoordinadorEstudiantes = () => {
                             </Tooltip>
                           )}
                         </TableCell>
-                        <TableCell align="center">
+                        <TableCell align="center" sx={{ ...TABLE_COLUMN_STYLES.acciones, verticalAlign: 'middle' }}>
                           <Button
                             size="small"
                             variant="outlined"
@@ -997,8 +1093,30 @@ const CoordinadorEstudiantes = () => {
               </Table>
             </TableContainer>
 
-            {totalPages > 1 && (
-              <Box display="flex" justifyContent="center" mt={3}>
+            <Box
+              display="flex"
+              justifyContent={{ xs: 'center', sm: 'space-between' }}
+              alignItems="center"
+              flexWrap="wrap"
+              gap={2}
+              mt={3}
+            >
+              <TextField
+                select
+                size="small"
+                label="Filas por página"
+                value={String(rowsPerPage)}
+                onChange={handleRowsPerPageChange}
+                sx={{ width: 180 }}
+              >
+                {ROWS_PER_PAGE_OPTIONS.map(option => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {totalPages > 1 && (
                 <Pagination
                   count={totalPages}
                   page={currentPage}
@@ -1006,9 +1124,10 @@ const CoordinadorEstudiantes = () => {
                   color="primary"
                   showFirstButton
                   showLastButton
+                  siblingCount={1}
                 />
-              </Box>
-            )}
+              )}
+            </Box>
           </>
         )}
       </Stack>
