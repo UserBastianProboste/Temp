@@ -6,6 +6,7 @@ import Login from './pages/login';
 import RegisterEstudiantes from './pages/registerEstudiantes';
 import DashboardEstudiante from './pages/dashboardEstudiante';
 import DashboardCoordinador from './pages/dashboardCoordinador';
+import EstudianteEmpresas from './pages/estudianteEmpresas';
 
 import { RouteGuard } from './components/RouteGuard';
 import SeleccionPractica from "./pages/SeleccionPractica";
@@ -59,6 +60,7 @@ function App() {
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
+                <Route path="/estudiante/empresas" element={<EstudianteEmpresas />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
               </Route>
 
