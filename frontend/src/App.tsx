@@ -35,11 +35,6 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<RegisterEstudiantes />} />
-            <Route
-              path="/register-estudiantes"
-              element={<RegisterEstudiantes />}
-            />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/evaluacion-supervisor/:token" element={<EvaluacionSupervisorPublica />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
