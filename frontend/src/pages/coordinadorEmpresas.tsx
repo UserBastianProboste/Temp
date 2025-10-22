@@ -1,11 +1,7 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useMemo } from 'react';
 import {
-  Alert,
-  Avatar,
   Box,
-  Button,
   Card,
-  CardActions,
   CardContent,
   CardHeader,
   CircularProgress,
@@ -20,8 +16,6 @@ import {
   MenuItem,
   Snackbar,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import type { AlertColor } from '@mui/material';
@@ -96,28 +90,24 @@ const estimateCardWeight = (empresa: Empresa) => {
 };
 
 const buildBalancedColumns = (items: Empresa[], columnCount: number) => {
-  if (columnCount <= 1) {
+  if (columnCount <= 0) {
     return [items];
   }
 
-  const columns: Empresa[][] = Array.from({ length: columnCount }, () => []);
-  const weights = new Array(columnCount).fill(0);
+  const baseSize = Math.floor(items.length / columnCount);
+  const remainder = items.length % columnCount;
 
-  items.forEach((item) => {
-    let targetColumn = 0;
-    weights.forEach((weight, index) => {
-      if (weight < weights[targetColumn]) {
-        targetColumn = index;
-      }
-    });
+  const columns: Empresa[][] = [];
+  let startIndex = 0;
 
-    columns[targetColumn].push(item);
-    weights[targetColumn] += estimateCardWeight(item);
-  });
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    const extra = columnIndex < remainder ? 1 : 0;
+    const endIndex = startIndex + baseSize + extra;
+    columns.push(items.slice(startIndex, endIndex));
+    startIndex = endIndex;
+  }
 
-  const populatedColumns = columns.filter((column) => column.length > 0);
-
-  return populatedColumns.length > 0 ? populatedColumns : [items];
+  return columns.filter((column) => column.length > 0);
 };
 
 const normalizeText = (value: string | null | undefined) =>
@@ -949,4 +939,4 @@ const EmpresasPage = () => {
   );
 };
 
-export default EmpresasPage;
+export default CoordinadorEmpresas;
