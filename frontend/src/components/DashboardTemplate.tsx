@@ -88,6 +88,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
     { label: 'Ficha de práctica', icon: <DescriptionIcon />, to: '/estudiante/fichapractica' },
     { label: 'Adjuntar informes', icon: <UploadIcon />, to: '/estudiante/adjuntar_informes' },
     { label: 'Retroalimentación', icon: <FeedbackIcon />, to: '/estudiante/retroalimentacion' },
+    { label: 'Empresas', icon: <BusinessIcon />, to: '/estudiante/empresas' },
     { label: 'Historial de solicitudes', icon: <DescriptionIcon />, to: '/historial_solicitudes' }
   ]), []);
 

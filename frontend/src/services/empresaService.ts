@@ -40,9 +40,15 @@ export const empresaService = {
     },
       // Actualizar empresa
   async update(id: string, updates: Partial<Empresa>) {
+    const sanitizedUpdates = Object.fromEntries(
+      Object.entries({ ...updates, updated_at: new Date().toISOString() }).filter(
+        ([, value]) => value !== undefined
+      )
+    );
+
     const { data, error } = await supabase
       .from('empresas')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(sanitizedUpdates)
       .eq('id', id)
       .select()
       .single();

@@ -42,6 +42,10 @@ export interface Empresa {
   cargo_jefe: string;
   telefono: string;
   email: string;
+  estado_convenio?: 'activo' | 'en_negociacion' | 'vencido' | null;
+  ubicacion?: string | null;
+  cupos_disponibles?: number | null;
+  ultimo_contacto?: string | null;
   created_at: string;
   updated_at: string;
 }
