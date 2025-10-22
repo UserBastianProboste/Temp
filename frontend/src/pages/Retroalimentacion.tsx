@@ -45,20 +45,6 @@ export default function Retroalimentacion(): React.ReactElement {
   const BUCKET_AVANCE = "informe_avance_practica";
   const BUCKET_FINAL = "informe_final_practica";
 
-const normalizeText = (s?: string | null) => {
-  if (!s) return "";
-  return s
-    .toString()
-    .replace(/[_\-]+/g, " ")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-};
-const isPractica = (s?: string | null) => {
-  const t = normalizeText(s);
-  return /practica\s*(i{1,2}|1|2)\b/.test(t);
-};
-
   useEffect(() => {
     (async () => {
       try {
@@ -99,11 +85,6 @@ const isPractica = (s?: string | null) => {
             size: r.size ?? null,
             uploaded_at: r.uploaded_at ?? null,
           };
-
-          if (!isPractica(archivo.name) && !isPractica(archivo.path)) {
-            return; 
-          }
-
           if ((r.tipo ?? "").toString().toLowerCase().includes("avance")) {
             avanceFromDb.push(archivo);
           } else if (
@@ -162,15 +143,13 @@ const isPractica = (s?: string | null) => {
           .from(BUCKET_AVANCE)
           .list(carpetaAvance, { limit: 200 });
         if (!errA && Array.isArray(listA) && listA.length > 0) {
-          const incoming = listA
-            .map((f: any) => ({
-              name: f.name,
-              path: `${carpetaAvance}/${f.name}`,
-              bucket: BUCKET_AVANCE,
-              size: f.size ?? null,
-              uploaded_at: (f as any).created_at ?? null,
-            }))
-            .filter((file: Archivo) => isPractica(file.name) || isPractica(file.path));
+          const incoming = listA.map((f: any) => ({
+            name: f.name,
+            path: `${carpetaAvance}/${f.name}`,
+            bucket: BUCKET_AVANCE,
+            size: f.size ?? null,
+            uploaded_at: (f as any).created_at ?? null,
+          }));
           setArchivosAvance((prev) => mergeFiles(prev, incoming));
         }
       } catch (e) {
@@ -183,15 +162,13 @@ const isPractica = (s?: string | null) => {
           .from(BUCKET_FINAL)
           .list(carpetaFinal, { limit: 200 });
         if (!errF && Array.isArray(listF) && listF.length > 0) {
-          const incoming = listF
-            .map((f: any) => ({
-              name: f.name,
-              path: `${carpetaFinal}/${f.name}`,
-              bucket: BUCKET_FINAL,
-              size: f.size ?? null,
-              uploaded_at: (f as any).created_at ?? null,
-            }))
-            .filter((file: Archivo) => isPractica(file.name) || isPractica(file.path));
+          const incoming = listF.map((f: any) => ({
+            name: f.name,
+            path: `${carpetaFinal}/${f.name}`,
+            bucket: BUCKET_FINAL,
+            size: f.size ?? null,
+            uploaded_at: (f as any).created_at ?? null,
+          }));
           setArchivosFinal((prev) => mergeFiles(prev, incoming));
         }
       } catch (e) {

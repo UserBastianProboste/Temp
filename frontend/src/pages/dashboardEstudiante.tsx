@@ -13,13 +13,37 @@ import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { AssignmentLate } from "@mui/icons-material";
 import { supabase } from "../services/supabaseClient";
 import { getPracticasEstudiante } from "../services/autoevaluacion";
-import { calcularAvancePorTiempo, normalizeText } from "../utils/practiceProgress";
+
+/** cálculo de avance por tiempo (igual que el tuyo) */
+const calcularAvancePorTiempo = (fechaInicioStr: string, fechaTerminoStr: string) => {
+  const hoy = new Date();
+  const inicio = new Date(fechaInicioStr);
+  const termino = new Date(fechaTerminoStr);
+
+  const totalDias = Math.max((termino.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24), 1);
+  const diasTranscurridos = Math.min(
+    (hoy.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24),
+    totalDias
+  );
+
+  const avance = Math.round((diasTranscurridos / totalDias) * 100);
+  return Math.min(Math.max(avance, 0), 100);
+};
+
+
+// Función para normalizar el nombre del archivo
+const normalizeText = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "") 
+    .toLowerCase();
 
 export default function DashboardEstudiante() {
-  const [avance, setAvance] = useState<number[]>([]);
-  const [practicaActual, setPracticaActual] = useState<any[]>([]);
+  const [avance, setAvance] = useState(0);
+  const [practicaActual, setPracticaActual] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [pendientes, setPendientes] = useState<string[][]>([]);
+  const [pendientes, setPendientes] = useState<string[]>([]);
   // const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -143,9 +167,9 @@ export default function DashboardEstudiante() {
           <CircularProgress />
         </Box>
       ) : (
-        practicaActual.map((practica: any, idx: number) => {
-          const avanceActual = avance[idx] ?? 0;
-          const pendientesActual: string[] = pendientes[idx] ?? [];
+        practicaActual?.map((practica: any, idx: number) => {
+          const avanceActual = Array.isArray(avance) ? avance[idx] : 0;
+          const pendientesActual = Array.isArray(pendientes) ? pendientes[idx] : [];
 
           const data = [
             { name: "Completado", value: avanceActual },

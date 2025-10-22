@@ -18,14 +18,11 @@ import HistorialSolicitudes from "./pages/historialSolicitudes";
 import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
 import CoordinadorPracticas from './pages/coordinadorPracticas';
 import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
-import CoordinadorEmpresas from './pages/coordinadorEmpresas';
-import CoordinadorInformesEstudiantes from './pages/coordinadorInformesEstudiantes';
-import CalificarAutoevaluacion from './pages/CalificarAutoevaluacion';
-import ListaAutoevaluaciones from './pages/ListaAutoevaluaciones';
+import EmpresasPage from './pages/coordinadorEmpresas';
 import PreguntasFrecuentes from './pages/preguntasFrecuentes';
 import EvaluacionSupervisorPublica from './pages/EvaluacionSupervisorPublica';
 import AuthCallback from "./pages/AuthCallback";
-import CoordinadorEvaluarInforme from './pages/coordinadorEvaluarInforme';
+import ProfileSettings from './pages/ProfileSettings';
 
 function App() {
   return (
@@ -49,6 +46,8 @@ function App() {
             {/* Rutas protegidas por autenticación */}
             <Route path='/' element={<RouteGuard />}>
 
+              <Route path="perfil" element={<ProfileSettings />} />
+
               {/* Rutas para el rol de estudiante */}
               <Route path='/estudiante' element={<RouteGuard roleAllowed='estudiante' />}>
                 <Route path="/estudiante/dashboard" element={<DashboardEstudiante />} />
@@ -56,6 +55,7 @@ function App() {
                 <Route path='/estudiante/seleccion-practica' element={<SeleccionPractica />} />
                 <Route path='/estudiante/autoevaluacion/:practicaId' element={<Autoevaluacion />} />
                 <Route path='/estudiante/fichapractica' element={<PracticaProfesionalForm />} />
+                <Route path='/estudiante/empresas' element={<EmpresasPage />} />
                 <Route path="/estudiante/adjuntar_informes" element={<AdjuntarInformes />} />
                 <Route path="/estudiante/retroalimentacion" element={<Retroalimentacion />} />
                 <Route path="/estudiante/preguntas-frecuentes" element={<PreguntasFrecuentes />} />
@@ -66,11 +66,7 @@ function App() {
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
                 <Route path='/coordinador/practicas' element={<CoordinadorPracticas />} />
                 <Route path='/coordinador/estudiantes' element={<CoordinadorEstudiantes />} />
-                <Route path='/coordinador/empresas' element={<CoordinadorEmpresas />} />
-                <Route path='/coordinador/informes-estudiante' element={<CoordinadorInformesEstudiantes />} />
-                <Route path="/coordinador/evaluar-informe/:informeId" element={<CoordinadorEvaluarInforme />} />
-                <Route path='/coordinador/autoevaluaciones' element={<ListaAutoevaluaciones />} />
-                <Route path='/coordinador/calificar-autoevaluacion/:autoevaluacionId' element={<CalificarAutoevaluacion />} />
+                <Route path='/coordinador/empresas' element={<EmpresasPage />} />
               </Route>
             </Route>
           </Routes>

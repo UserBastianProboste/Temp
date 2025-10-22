@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import type { FC } from "react";
 import { supabase } from "../services/supabaseClient";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -48,7 +48,6 @@ const UploadCard: FC<UploadCardProps> = ({
   const [success, setSuccess] = useState<string>("");
   const [uploading, setUploading] = useState<boolean>(false);
   const [downloadingIdx, setDownloadingIdx] = useState<number | null>(null);
-  const [hasPractica, setHasPractica] = useState<boolean | null>(null);
 
   const acceptAttr = allowedExtensions.join(",");
   // Validación básica del archivo
@@ -90,82 +89,12 @@ const UploadCard: FC<UploadCardProps> = ({
     setSelectedFile(file);
   };
 
-  // Verificar si el usuario tiene alguna practica asignada 
-  useEffect(() => {
-    let mounted = true;
-    const checkPracticaAsignada = async () => {
-      try {
-        if (!mounted) return;
-        setHasPractica(null);
-
-        const { data: authData, error: userError } =
-          await supabase.auth.getUser();
-        if (userError) {
-          console.warn("Error al obtener usuario:", userError);
-          if (mounted) setHasPractica(false);
-          return;
-        }
-        const user = authData?.user;
-        if (!user) {
-          if (mounted) setHasPractica(false);
-          return;
-        }
-
-        const { data: estudianteRow, error: estudianteErr } = await supabase
-          .from("estudiantes")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (estudianteErr) {
-          console.warn("Error comprobando estudiante:", estudianteErr);
-          if (mounted) setHasPractica(false);
-          return;
-        }
-
-        const estudianteId = estudianteRow ? (estudianteRow as any).id : null;
-        if (!estudianteId) {
-          if (mounted) setHasPractica(false);
-          return;
-        }
-
-        const { data: practicas, error: pErr } = await supabase
-          .from("practicas")
-          .select("id, estado")
-          .eq("estudiante_id", estudianteId)
-          .limit(1);
-
-        if (pErr) {
-          console.warn("Error comprobando prácticas:", pErr);
-          if (mounted) setHasPractica(false);
-          return;
-        }
-
-        const tiene = Array.isArray(practicas) && practicas.length > 0;
-        if (mounted) setHasPractica(tiene);
-      } catch (e) {
-        console.error("checkPracticaAsignada error", e);
-        if (mounted) setHasPractica(false);
-      }
-    };
-
-    checkPracticaAsignada();
-    return () => {
-      mounted = false;
-    };
-  }, [bucket]);
-
   // subir el archivo al bucket y registrar en la tabla "informes"
   const uploadFile = async () => {
     setError("");
     setSuccess("");
     if (!selectedFile) {
       setError("No hay archivo seleccionado para subir.");
-      return;
-    }
-
-    if (hasPractica === false) {
-      setError("No puedes subir informes: no tienes una práctica asignada.");
       return;
     }
 
@@ -219,19 +148,6 @@ const UploadCard: FC<UploadCardProps> = ({
         estudianteId = (newEst as any).id;
       }
 
-      const { data: practicasCheck, error: practicasErr } = await supabase
-        .from("practicas")
-        .select("id, estado")
-        .eq("estudiante_id", estudianteId)
-        .limit(1);
-
-      if (practicasErr) throw practicasErr;
-      if (!practicasCheck || practicasCheck.length === 0) {
-        throw new Error(
-          "No tienes una práctica asignada. No puedes subir informes."
-        );
-      }
-
       // 2) Generar path unico para storage
       const safeName = selectedFile.name.replace(/\s+/g, "_");
       const filename = `${Date.now()}_${safeName}`;
@@ -250,77 +166,27 @@ const UploadCard: FC<UploadCardProps> = ({
 
       // usar la path devuelta por el server
       const serverPath = (uploadData as any)?.path ?? path;
+
       let coordinatorId: string | null = null;
       try {
-        const { data: coordData, error: rpcError } = await supabase.rpc(
-          "obtener_coordinador_por_estudiante",
-          { est_id: estudianteId }
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          "obtener_coordinador_id"
         );
-        console.debug("RPC obtener_coordinador_por_estudiante:", { rpcError, coordData });
         if (rpcError) {
-          console.warn("RPC error:", rpcError);
-        } else if (coordData == null) {
+          console.warn("RPC obtener_coordinador_id error:", rpcError);
+        } else if (rpcData == null) {
           coordinatorId = null;
-        } else if (typeof coordData === "string") {
-          coordinatorId = coordData;
-        } else if (Array.isArray(coordData) && coordData.length > 0) {
-          coordinatorId =
-            (coordData[0] as any).obtener_coordinador_por_estudiante ??
-            (coordData[0] as any);
-        } else if (typeof coordData === "object") {
-          coordinatorId =
-            (coordData as any).obtener_coordinador_por_estudiante ??
-            (coordData as any);
+        } else if (Array.isArray(rpcData) && rpcData.length > 0) {
+          const first = (rpcData as any)[0];
+          coordinatorId = first?.obtener_coordinador_id ?? (first as any);
+        } else if (typeof rpcData === "object") {
+          coordinatorId = (rpcData as any).obtener_coordinador_id ?? null;
+        } else if (typeof rpcData === "string") {
+          coordinatorId = rpcData;
         }
-      } catch (err) {
-        console.warn(
-          "Error llamando RPC obtener_coordinador_por_estudiante:",
-          err
-        );
+      } catch (rpcErr) {
+        console.warn("Error llamando RPC obtener_coordinador_id:", rpcErr);
         coordinatorId = null;
-      }
-      if (!coordinatorId) {
-        try {
-          const { data: estCarr, error: estCarrErr } = await supabase
-            .from("estudiantes")
-            .select("carrera")
-            .eq("id", estudianteId)
-            .maybeSingle();
-
-          if (estCarrErr) {
-            console.warn("Error leyendo carrera del estudiante (fallback):", estCarrErr);
-          } else {
-            const carreraEst = (estCarr as any)?.carrera ?? null;
-            if (carreraEst) {
-              const { data: coords, error: coordsErr } = await supabase
-                .from("coordinadores")
-                .select("id, carrera, created_at, tipo");
-
-              if (coordsErr) {
-                console.warn("Error leyendo coordinadores (fallback):", coordsErr);
-              } else if (Array.isArray(coords)) {
-                const norm = (s: any) => String(s ?? "").trim().toLowerCase();
-                const carreraNorm = norm(carreraEst);
-
-                // filtrar por coincidencia normalizada y tipo
-                const matches = coords
-                  .filter((c: any) => norm(c.carrera) === carreraNorm && String(c.tipo) === "coordinador")
-                  .sort((a: any, b: any) => {
-                    const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-                    const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-                    return ta - tb;
-                  });
-
-                if (matches.length > 0) {
-                  coordinatorId = matches[0].id;
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.warn("Fallback cliente para obtener coordinador falló:", err);
-          coordinatorId = null;
-        }
       }
 
       // determinar tipo final (prop tiene prioridad)
@@ -332,40 +198,6 @@ const UploadCard: FC<UploadCardProps> = ({
           : bucket.toLowerCase().includes("final")
           ? "final"
           : "otro";
-
-      let tipoPracticaAsignada: string | null = null;
-      try {
-        const { data: pref, error: prefErr } = await supabase
-          .from("practicas")
-          .select("tipo_practica")
-          .eq("estudiante_id", estudianteId)
-          .in("estado", ["en_progreso", "aprobada"])
-          .order("fecha_inicio", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (prefErr)
-          console.warn("Error leyendo practicas prioritarias:", prefErr);
-
-        if (pref && (pref as any).tipo_practica) {
-          tipoPracticaAsignada = (pref as any).tipo_practica;
-        } else {
-          const { data: anyPr, error: anyErr } = await supabase
-            .from("practicas")
-            .select("tipo_practica")
-            .eq("estudiante_id", estudianteId)
-            .order("fecha_inicio", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (anyErr) console.warn("Error leyendo practicas:", anyErr);
-          if (anyPr && (anyPr as any).tipo_practica)
-            tipoPracticaAsignada = (anyPr as any).tipo_practica;
-        }
-      } catch (errTipo) {
-        console.warn("No se pudo determinar tipo_practica:", errTipo);
-        tipoPracticaAsignada = null;
-      }
 
       const { error: insertError } = await supabase
         .from("informes")
@@ -380,7 +212,6 @@ const UploadCard: FC<UploadCardProps> = ({
             mime: selectedFile.type,
             public: false,
             tipo: tipoFinal,
-            tipo_practica: tipoPracticaAsignada,
           },
         ])
         .select("*");
@@ -429,12 +260,9 @@ const UploadCard: FC<UploadCardProps> = ({
         if (!signedUrl) throw new Error("No se pudo generar la signed URL.");
         window.open(signedUrl, "_blank");
       } else {
-        const { data } = supabase.storage
-          .from(useBucket)
-          .getPublicUrl(item.path);
+        const { data } = supabase.storage.from(useBucket).getPublicUrl(item.path);
         const publicUrl = (data as any)?.publicUrl || (data as any)?.public_url;
-        if (!publicUrl)
-          throw new Error("No existe URL pública para este archivo.");
+        if (!publicUrl) throw new Error("No existe URL pública para este archivo.");
         const a = document.createElement("a");
         a.href = publicUrl;
         a.download = item.label || item.path.split("/").pop() || "archivo";
@@ -476,18 +304,6 @@ const UploadCard: FC<UploadCardProps> = ({
             ? `Seleccionado: ${selectedFile.name}`
             : `Formatos permitidos: ${allowedExtensions.join(", ")}`}
         </Typography>
-
-        {hasPractica === null && (
-          <Typography variant="caption" sx={{ mt: 1, display: "block" }}>
-            Verificando si tienes una práctica asignada...
-          </Typography>
-        )}
-        {hasPractica === false && (
-          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-            No se permite la subida: no tienes una práctica asignada. Si crees
-            que esto es un error, contacta con tu coordinador.
-          </Typography>
-        )}
 
         {/* Botones de descarga */}
         {downloads.length > 0 && (
@@ -532,7 +348,6 @@ const UploadCard: FC<UploadCardProps> = ({
         <Button
           variant="contained"
           onClick={onButtonClick}
-          disabled={hasPractica !== true}
           sx={{
             bgcolor: "red",
             "&:hover": { bgcolor: "darkred" },
@@ -550,7 +365,7 @@ const UploadCard: FC<UploadCardProps> = ({
         <Button
           variant="outlined"
           onClick={uploadFile}
-          disabled={!selectedFile || uploading || hasPractica !== true}
+          disabled={!selectedFile || uploading}
           sx={{
             textTransform: "none",
             width: { xs: "100%", md: "auto" },
@@ -561,21 +376,13 @@ const UploadCard: FC<UploadCardProps> = ({
         </Button>
       </Box>
       {/* mensajes de error/exito */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={() => setError("")}
-      >
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError("")}>
         <Alert severity="error" onClose={() => setError("")}>
           {error}
         </Alert>
       </Snackbar>
 
-      <Snackbar
-        open={!!success}
-        autoHideDuration={5000}
-        onClose={() => setSuccess("")}
-      >
+      <Snackbar open={!!success} autoHideDuration={5000} onClose={() => setSuccess("")}>
         <Alert severity="success" onClose={() => setSuccess("")}>
           {success}
         </Alert>
@@ -584,6 +391,7 @@ const UploadCard: FC<UploadCardProps> = ({
   );
 };
 
+// Componente para listar recursos descargables
 const ResourcesCard: FC<{ items: DownloadItem[]; title?: string }> = ({
   items,
   title = "Recursos",
@@ -612,12 +420,9 @@ const ResourcesCard: FC<{ items: DownloadItem[]; title?: string }> = ({
         if (!signedUrl) throw new Error("No se pudo generar la signed URL.");
         window.open(signedUrl, "_blank");
       } else {
-        const { data } = supabase.storage
-          .from(useBucket)
-          .getPublicUrl(item.path);
+        const { data } = supabase.storage.from(useBucket).getPublicUrl(item.path);
         const publicUrl = (data as any)?.publicUrl || (data as any)?.public_url;
-        if (!publicUrl)
-          throw new Error("No existe URL pública para este archivo.");
+        if (!publicUrl) throw new Error("No existe URL pública para este archivo.");
         const a = document.createElement("a");
         a.href = publicUrl;
         a.download = item.label || item.path.split("/").pop() || "archivo";
@@ -657,21 +462,13 @@ const ResourcesCard: FC<{ items: DownloadItem[]; title?: string }> = ({
         </Box>
 
         {/* snackbars para errores/éxitos */}
-        <Snackbar
-          open={!!error}
-          autoHideDuration={6000}
-          onClose={() => setError("")}
-        >
+        <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError("")}>
           <Alert severity="error" onClose={() => setError("")}>
             {error}
           </Alert>
         </Snackbar>
 
-        <Snackbar
-          open={!!success}
-          autoHideDuration={5000}
-          onClose={() => setSuccess("")}
-        >
+        <Snackbar open={!!success} autoHideDuration={5000} onClose={() => setSuccess("")}>
           <Alert severity="success" onClose={() => setSuccess("")}>
             {success}
           </Alert>
@@ -744,16 +541,12 @@ export default function AdjuntarInformesEstudiantes(): React.ReactElement {
                   mx: "auto",
                 }}
               >
-                <Typography
-                  variant="body1"
-                  sx={{ fontWeight: "bold", color: "#F57F17" }}
-                >
+                <Typography variant="body1" sx={{ fontWeight: "bold", color: "#F57F17" }}>
                   IMPORTANTE:
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#333" }}>
-                  Asegúrate de indicar en el nombre del archivo a qué práctica
-                  corresponde, por ejemplo: "Practica I.pdf", "Practica
-                  II.docx", etc.
+                  Asegúrate de indicar en el nombre del archivo a qué práctica corresponde,
+                  por ejemplo: "Práctica I.pdf", "Práctica II.docx", etc.
                 </Typography>
               </Box>
 
