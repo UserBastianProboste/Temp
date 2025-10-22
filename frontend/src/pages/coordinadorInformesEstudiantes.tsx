@@ -9,7 +9,6 @@ import {
   Divider,
   TextField,
   InputAdornment,
-  Grid,
   Paper,
   ListItemButton,
   Stack,
@@ -26,6 +25,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import Grid from "@mui/material/GridLegacy";
 import { useNavigate } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
