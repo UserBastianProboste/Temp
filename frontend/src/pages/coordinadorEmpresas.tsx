@@ -32,14 +32,17 @@ import { useTheme } from '@mui/material/styles';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import {
   Business as BusinessIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Email as EmailIcon,
+  FilterAlt as FilterAltIcon,
+  FilterList as FilterListIcon,
   LocationOn as LocationOnIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Search as SearchIcon,
-  FilterList as FilterListIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
+  Work as WorkIcon,
 } from '@mui/icons-material';
 import DashboardTemplate from '../components/DashboardTemplate';
 import { empresaService } from '../services/empresaService';
@@ -216,16 +219,6 @@ const EmpresasPage = () => {
     [empresas, selectedEmpresaId],
   );
 
-  const columnCount = useMemo(() => {
-    if (isSmallScreen) {
-      return 1;
-    }
-    if (isMediumScreen) {
-      return 2;
-    }
-    return 3;
-  }, [isSmallScreen, isMediumScreen]);
-
   const filteredEmpresas = useMemo(() => {
     const query = normalizeText(searchQuery);
 
@@ -322,8 +315,8 @@ const EmpresasPage = () => {
     setSelectedEmpresaId((current) => (current === empresaId ? null : empresaId));
   };
 
-  const handleSortChange = (value: SortOption) => {
-    setSortOption(value);
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
   };
 
   const handleFilterChange = (field: keyof EmpresaFilters) => (event: SelectChangeEvent<FilterValue>) => {
@@ -480,31 +473,29 @@ const EmpresasPage = () => {
             </Typography>
           </Stack>
 
-              {(hasActiveFilters || selectedEmpresa) && (
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
-                  {hasActiveFilters && (
-                    <Button variant="text" onClick={handleClearFilters} startIcon={<FilterAltIcon />}>
-                      Limpiar filtros
-                    </Button>
-                  )}
-                  {selectedEmpresa && (
-                    <Alert
-                      icon={<CheckCircleOutlineIcon fontSize="inherit" />}
-                      severity="info"
-                      sx={{ borderRadius: 2, flex: 1 }}
-                      action={
-                        <Button color="inherit" size="small" onClick={() => setSelectedEmpresaId(null)}>
-                          Quitar selección
-                        </Button>
-                      }
-                    >
-                      Has seleccionado <strong>{selectedEmpresa.razon_social}</strong> como referencia.
-                    </Alert>
-                  )}
-                </Stack>
+          {(hasActiveFilters || selectedEmpresa) && (
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
+              {hasActiveFilters && (
+                <Button variant="text" onClick={handleClearFilters} startIcon={<FilterAltIcon />}>
+                  Limpiar filtros
+                </Button>
               )}
-            </Box>
-          </Fade>
+              {selectedEmpresa && (
+                <Alert
+                  icon={<CheckCircleOutlineIcon fontSize="inherit" />}
+                  severity="info"
+                  sx={{ borderRadius: 2, flex: 1 }}
+                  action={
+                    <Button color="inherit" size="small" onClick={() => setSelectedEmpresaId(null)}>
+                      Quitar selección
+                    </Button>
+                  }
+                >
+                  Has seleccionado <strong>{selectedEmpresa.razon_social}</strong> como referencia.
+                </Alert>
+              )}
+            </Stack>
+          )}
 
           {error && (
             <Alert
@@ -691,7 +682,7 @@ const EmpresasPage = () => {
                 <Stack key={columnIndex} spacing={3} sx={{ flex: 1 }}>
                   {column.map((empresa, itemIndex) => {
                     const isSelected = selectedEmpresaId === empresa.id;
-                    const animationDelay = Math.min((columnIndex * 4 + itemIndex) * 60, 360);
+                    const fadeDelay = Math.min((columnIndex * 4 + itemIndex) * 60, 360);
 
                     return (
                       <Grow
