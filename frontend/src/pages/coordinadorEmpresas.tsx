@@ -14,7 +14,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Fade,
+  Divider,
+  IconButton,
   InputAdornment,
   MenuItem,
   Snackbar,
@@ -25,26 +26,25 @@ import {
 } from '@mui/material';
 import type { AlertColor } from '@mui/material';
 import Grow from '@mui/material/Grow';
+import Fade from '@mui/material/Fade';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import {
   Business as BusinessIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Email as EmailIcon,
-  FilterAlt as FilterAltIcon,
-  FilterList as FilterListIcon,
   LocationOn as LocationOnIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
   Search as SearchIcon,
-  Work as WorkIcon,
+  FilterList as FilterListIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
 } from '@mui/icons-material';
 import DashboardTemplate from '../components/DashboardTemplate';
 import { empresaService } from '../services/empresaService';
 import type { Empresa } from '../types/database';
 import { useAuth } from '../hooks/useAuth';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
 
 interface EmpresaFormState {
   razon_social: string;
@@ -58,13 +58,14 @@ interface EmpresaFormState {
 type EmpresaFormErrors = Partial<Record<keyof EmpresaFormState, string>>;
 
 type SortOption = 'alphabetical-asc' | 'alphabetical-desc' | 'creation-newest' | 'creation-oldest';
+type FilterValue = 'all' | 'missing' | string;
 
 interface EmpresaFilters {
-  location: string;
-  user: string;
-  email: string;
-  role: string;
-  phone: string;
+  location: FilterValue;
+  user: FilterValue;
+  email: FilterValue;
+  role: FilterValue;
+  phone: FilterValue;
 }
 
 const emptyFormState: EmpresaFormState = {
@@ -74,14 +75,6 @@ const emptyFormState: EmpresaFormState = {
   cargo_jefe: '',
   telefono: '',
   email: '',
-};
-
-const INITIAL_FILTERS: EmpresaFilters = {
-  location: 'all',
-  user: 'all',
-  email: 'all',
-  role: 'all',
-  phone: 'all',
 };
 
 const estimateCardWeight = (empresa: Empresa) => {
@@ -125,6 +118,16 @@ const buildBalancedColumns = (items: Empresa[], columnCount: number) => {
   return populatedColumns.length > 0 ? populatedColumns : [items];
 };
 
+const normalizeText = (value: string | null | undefined) =>
+  value
+    ? value
+        .toString()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+    : '';
+
 const EmpresasPage = () => {
   const { role } = useAuth();
   const isCoordinator = role === 'coordinador';
@@ -138,7 +141,13 @@ const EmpresasPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState<EmpresaFilters>({ ...INITIAL_FILTERS });
+  const [filters, setFilters] = useState<EmpresaFilters>({
+    location: 'all',
+    user: 'all',
+    email: 'all',
+    role: 'all',
+    phone: 'all',
+  });
   const [sortOption, setSortOption] = useState<SortOption>('alphabetical-asc');
 
   const [editTarget, setEditTarget] = useState<Empresa | null>(null);
@@ -147,11 +156,9 @@ const EmpresasPage = () => {
   const [formErrors, setFormErrors] = useState<EmpresaFormErrors>({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: AlertColor;
-  }>({ open: false, message: '', severity: 'success' });
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: AlertColor }>(
+    { open: false, message: '', severity: 'success' },
+  );
 
   const loadEmpresas = useCallback(async () => {
     setLoading(true);
@@ -174,39 +181,63 @@ const EmpresasPage = () => {
     void loadEmpresas();
   }, [loadEmpresas]);
 
-  const normalizeText = (value: string | null | undefined) =>
-    value
-      ? value
-          .toString()
-          .trim()
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-      : '';
-
   const availableFilters = useMemo(() => {
-    const collect = (key: keyof Empresa) => {
-      const unique = new Set<string>();
+    const createOptions = (key: keyof Empresa) => {
+      const values = new Set<string>();
+      let hasMissing = false;
+
       empresas.forEach((empresa) => {
         const rawValue = empresa[key];
-        if (typeof rawValue === 'string' && rawValue.trim()) {
-          unique.add(rawValue.trim());
+        if (typeof rawValue === 'string' && rawValue.trim().length > 0) {
+          values.add(rawValue.trim());
+        } else {
+          hasMissing = true;
         }
       });
-      return Array.from(unique).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+      const sortedValues = Array.from(values).sort((a, b) =>
+        a.localeCompare(b, 'es', { sensitivity: 'base' }),
+      );
+
+      return hasMissing ? [...sortedValues, 'missing'] : sortedValues;
     };
 
     return {
-      locations: collect('direccion'),
-      users: collect('jefe_directo'),
-      emails: collect('email'),
-      roles: collect('cargo_jefe'),
-      phones: collect('telefono'),
+      locations: createOptions('direccion'),
+      users: createOptions('jefe_directo'),
+      emails: createOptions('email'),
+      roles: createOptions('cargo_jefe'),
+      phones: createOptions('telefono'),
     };
   }, [empresas]);
 
+  const selectedEmpresa = useMemo(
+    () => empresas.find((empresa) => empresa.id === selectedEmpresaId) ?? null,
+    [empresas, selectedEmpresaId],
+  );
+
+  const columnCount = useMemo(() => {
+    if (isSmallScreen) {
+      return 1;
+    }
+    if (isMediumScreen) {
+      return 2;
+    }
+    return 3;
+  }, [isSmallScreen, isMediumScreen]);
+
   const filteredEmpresas = useMemo(() => {
     const query = normalizeText(searchQuery);
+
+    const matchesFilterValue = (value: string | null, filterValue: FilterValue) => {
+      if (filterValue === 'all') {
+        return true;
+      }
+      if (filterValue === 'missing') {
+        return !value || value.trim().length === 0;
+      }
+      return normalizeText(value) === normalizeText(filterValue);
+    };
 
     return empresas.filter((empresa) => {
       const matchesSearch =
@@ -222,64 +253,40 @@ const EmpresasPage = () => {
           .map((value) => normalizeText(value))
           .some((value) => value.includes(query));
 
-      const matchesLocation =
-        filters.location === 'all'
-          ? true
-          : filters.location === 'missing'
-          ? !empresa.direccion
-          : normalizeText(empresa.direccion) === normalizeText(filters.location);
-
-      const matchesUser =
-        filters.user === 'all'
-          ? true
-          : filters.user === 'missing'
-          ? !empresa.jefe_directo
-          : normalizeText(empresa.jefe_directo) === normalizeText(filters.user);
-
-      const matchesEmail =
-        filters.email === 'all'
-          ? true
-          : filters.email === 'missing'
-          ? !empresa.email
-          : normalizeText(empresa.email) === normalizeText(filters.email);
-
-      const matchesRole =
-        filters.role === 'all'
-          ? true
-          : filters.role === 'missing'
-          ? !empresa.cargo_jefe
-          : normalizeText(empresa.cargo_jefe) === normalizeText(filters.role);
-
-      const matchesPhone =
-        filters.phone === 'all'
-          ? true
-          : filters.phone === 'missing'
-          ? !empresa.telefono
-          : normalizeText(empresa.telefono) === normalizeText(filters.phone);
+      const matchesLocation = matchesFilterValue(empresa.direccion, filters.location);
+      const matchesUser = matchesFilterValue(empresa.jefe_directo, filters.user);
+      const matchesEmail = matchesFilterValue(empresa.email, filters.email);
+      const matchesRole = matchesFilterValue(empresa.cargo_jefe, filters.role);
+      const matchesPhone = matchesFilterValue(empresa.telefono, filters.phone);
 
       return (
-        matchesSearch && matchesLocation && matchesUser && matchesEmail && matchesRole && matchesPhone
+        matchesSearch &&
+        matchesLocation &&
+        matchesUser &&
+        matchesEmail &&
+        matchesRole &&
+        matchesPhone
       );
     });
-  }, [empresas, filters.email, filters.location, filters.phone, filters.role, filters.user, searchQuery]);
+  }, [empresas, filters, searchQuery]);
 
   const sortedEmpresas = useMemo(() => {
     const sorted = [...filteredEmpresas];
-    switch (sortOption) {
-      case 'alphabetical-desc':
-        sorted.sort((a, b) => b.razon_social.localeCompare(a.razon_social, 'es', { sensitivity: 'base' }));
-        break;
-      case 'creation-newest':
-        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
-      case 'creation-oldest':
-        sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        break;
-      case 'alphabetical-asc':
-      default:
-        sorted.sort((a, b) => a.razon_social.localeCompare(b.razon_social, 'es', { sensitivity: 'base' }));
-        break;
-    }
+
+    sorted.sort((a, b) => {
+      switch (sortOption) {
+        case 'alphabetical-desc':
+          return b.razon_social.localeCompare(a.razon_social, 'es', { sensitivity: 'base' });
+        case 'creation-newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'creation-oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'alphabetical-asc':
+        default:
+          return a.razon_social.localeCompare(b.razon_social, 'es', { sensitivity: 'base' });
+      }
+    });
+
     return sorted;
   }, [filteredEmpresas, sortOption]);
 
@@ -308,34 +315,29 @@ const EmpresasPage = () => {
           filters.role !== 'all' ||
           filters.phone !== 'all',
       ),
-    [filters.email, filters.location, filters.phone, filters.role, filters.user, searchQuery],
+    [filters, searchQuery],
   );
 
-  const selectedEmpresa = useMemo(
-    () => empresas.find((empresa) => empresa.id === selectedEmpresaId) ?? null,
-    [empresas, selectedEmpresaId],
-  );
-
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
-  };
-
-  const handleFilterChange = (field: keyof EmpresaFilters) => (value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+  const handleSelect = (empresaId: string) => {
+    setSelectedEmpresaId((current) => (current === empresaId ? null : empresaId));
   };
 
   const handleSortChange = (value: SortOption) => {
     setSortOption(value);
   };
 
-  const handleClearFilters = () => {
-    setSearchQuery('');
-    setFilters({ ...INITIAL_FILTERS });
-    setSortOption('alphabetical-asc');
+  const handleFilterChange = (field: keyof EmpresaFilters) => (event: SelectChangeEvent<FilterValue>) => {
+    setFilters((prev) => ({ ...prev, [field]: event.target.value as FilterValue }));
   };
 
-  const handleSelect = (empresaId: string) => {
-    setSelectedEmpresaId((current) => (current === empresaId ? null : empresaId));
+  const handleSortChange = (event: SelectChangeEvent<SortOption>) => {
+    setSortOption(event.target.value as SortOption);
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setFilters({ location: 'all', user: 'all', email: 'all', role: 'all', phone: 'all' });
+    setSortOption('alphabetical-asc');
   };
 
   const handleEditOpen = (empresa: Empresa) => {
@@ -418,8 +420,7 @@ const EmpresasPage = () => {
       }
 
       showSnackbar('Empresa actualizada correctamente.', 'success');
-      setEditTarget(null);
-      setFormValues(emptyFormState);
+      handleEditClose();
     } catch (err) {
       console.error('Error al actualizar empresa', err);
       showSnackbar(
@@ -432,7 +433,9 @@ const EmpresasPage = () => {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget) {
+      return;
+    }
 
     setDeleting(true);
     try {
@@ -442,9 +445,12 @@ const EmpresasPage = () => {
       }
 
       setEmpresas((prev) => prev.filter((empresa) => empresa.id !== deleteTarget.id));
-      setSelectedEmpresaId((current) => (current === deleteTarget.id ? null : current));
+      if (selectedEmpresaId === deleteTarget.id) {
+        setSelectedEmpresaId(null);
+      }
+
       showSnackbar('Empresa eliminada correctamente.', 'success');
-      setDeleteTarget(null);
+      handleDeleteClose();
     } catch (err) {
       console.error('Error al eliminar empresa', err);
       showSnackbar(
@@ -456,226 +462,23 @@ const EmpresasPage = () => {
     }
   };
 
-  const handleCloseSnackbar = (_event?: unknown, reason?: string) => {
-    if (reason === 'clickaway') {
-      return;
-    }
+  const handleCloseSnackbar = () => {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
   return (
-    <DashboardTemplate title="Relación con empresas">
-      <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 4, md: 6 } }}>
-        <Stack spacing={3}>
-          <Box textAlign="center">
-            <Typography variant="h4" component="h1" gutterBottom>
-              Empresas colaboradoras
+    <DashboardTemplate title="Empresas colaboradoras">
+      <Box component="section" sx={{ py: 4 }}>
+        <Stack spacing={4}>
+          <Stack spacing={1}>
+            <Typography variant="h4" fontWeight={600}>
+              Explorador de empresas
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: 'auto' }}>
-              Consulta el listado actualizado de organizaciones disponibles para prácticas.{' '}
-              {isCoordinator
-                ? 'Como coordinador puedes mantener la información al día.'
-                : 'Como estudiante selecciona la opción que se ajuste a tus intereses.'}
+            <Typography variant="body1" color="text.secondary">
+              Encuentra rápidamente la empresa ideal utilizando la búsqueda instantánea, filtros
+              dinámicos y opciones de ordenamiento.
             </Typography>
-          </Box>
-
-          <Fade in={!loading && !error && empresas.length > 0} mountOnEnter unmountOnExit timeout={400}>
-            <Box
-              sx={{
-                borderRadius: 3,
-                p: { xs: 2, md: 3 },
-                backgroundColor: 'background.paper',
-                boxShadow: { xs: 1, md: 3 },
-                border: '1px solid',
-                borderColor: 'divider',
-                transition: 'box-shadow 0.3s ease, transform 0.3s ease',
-                '&:hover': {
-                  boxShadow: { xs: 2, md: 6 },
-                  transform: { md: 'translateY(-2px)' },
-                },
-              }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                <FilterListIcon color="primary" />
-                <Typography variant="h6" component="h2">
-                  Busca y filtra empresas
-                </Typography>
-              </Stack>
-
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={{ xs: 2, md: 3 }}
-                useFlexGap
-                flexWrap="wrap"
-                alignItems="stretch"
-              >
-                <TextField
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  placeholder="Buscar por nombre, ubicación o contacto"
-                  label="Buscar"
-                  size="small"
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{
-                    flex: { xs: '1 1 100%', md: '2 1 320px' },
-                    minWidth: { md: 260 },
-                  }}
-                />
-
-                <TextField
-                  select
-                  fullWidth
-                  label="Ubicación"
-                  value={filters.location}
-                  onChange={(event) => handleFilterChange('location')(event.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LocationOnIcon color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: { xs: '1 1 100%', sm: '1 1 200px' } }}
-                >
-                  <MenuItem value="all">Todas</MenuItem>
-                  <MenuItem value="missing">Sin registro</MenuItem>
-                  {availableFilters.locations.map((location) => (
-                    <MenuItem key={location} value={location}>
-                      {location}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  fullWidth
-                  label="Usuario"
-                  value={filters.user}
-                  onChange={(event) => handleFilterChange('user')(event.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonIcon color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: { xs: '1 1 100%', sm: '1 1 200px' } }}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="missing">Sin registro</MenuItem>
-                  {availableFilters.users.map((user) => (
-                    <MenuItem key={user} value={user}>
-                      {user}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  fullWidth
-                  label="Correo electrónico"
-                  value={filters.email}
-                  onChange={(event) => handleFilterChange('email')(event.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailIcon color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: { xs: '1 1 100%', sm: '1 1 220px' } }}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="missing">Sin registro</MenuItem>
-                  {availableFilters.emails.map((email) => (
-                    <MenuItem key={email} value={email}>
-                      {email}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  fullWidth
-                  label="Cargo de contacto"
-                  value={filters.role}
-                  onChange={(event) => handleFilterChange('role')(event.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <FilterAltIcon color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: { xs: '1 1 100%', sm: '1 1 220px' } }}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="missing">Sin registro</MenuItem>
-                  {availableFilters.roles.map((role) => (
-                    <MenuItem key={role} value={role}>
-                      {role}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  fullWidth
-                  label="Teléfono"
-                  value={filters.phone}
-                  onChange={(event) => handleFilterChange('phone')(event.target.value)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PhoneIcon color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: { xs: '1 1 100%', sm: '1 1 200px' } }}
-                >
-                  <MenuItem value="all">Todos</MenuItem>
-                  <MenuItem value="missing">Sin registro</MenuItem>
-                  {availableFilters.phones.map((phone) => (
-                    <MenuItem key={phone} value={phone}>
-                      {phone}
-                    </MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  fullWidth
-                  label="Ordenar por"
-                  value={sortOption}
-                  onChange={(event) => handleSortChange(event.target.value as SortOption)}
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <FilterAltIcon color="action" fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ flex: { xs: '1 1 100%', sm: '1 1 220px' } }}
-                >
-                  <MenuItem value="alphabetical-asc">Alfabético (A-Z)</MenuItem>
-                  <MenuItem value="alphabetical-desc">Alfabético (Z-A)</MenuItem>
-                  <MenuItem value="creation-newest">Fecha de creación (recientes primero)</MenuItem>
-                  <MenuItem value="creation-oldest">Fecha de creación (antiguas primero)</MenuItem>
-                </TextField>
-              </Stack>
+          </Stack>
 
               {(hasActiveFilters || selectedEmpresa) && (
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
@@ -717,6 +520,149 @@ const EmpresasPage = () => {
             </Alert>
           )}
 
+          {!loading && !error && empresas.length > 0 && (
+            <Fade in timeout={300}>
+              <Stack
+                spacing={3}
+                sx={{
+                  p: { xs: 2, md: 3 },
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  backgroundColor: (themeInstance) => themeInstance.palette.background.paper,
+                  boxShadow: 2,
+                }}
+              >
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+                  <TextField
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    placeholder="Buscar por nombre, contacto o datos de la empresa"
+                    fullWidth
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+
+                  {hasActiveFilters && (
+                    <Button color="inherit" onClick={handleClearFilters} sx={{ alignSelf: { xs: 'flex-end', md: 'center' } }}>
+                      Limpiar filtros
+                    </Button>
+                  )}
+                </Stack>
+
+                <Divider textAlign="left" sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <FilterListIcon fontSize="small" />
+                    <Typography variant="body2" fontWeight={600}>
+                      Filtros y ordenamiento
+                    </Typography>
+                  </Stack>
+                </Divider>
+
+                <Stack spacing={2} direction={{ xs: 'column', md: 'row' }}>
+                  <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} sx={{ flex: 1 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Ubicación"
+                      value={filters.location}
+                      onChange={(event) => handleFilterChange('location')(event as SelectChangeEvent<FilterValue>)}
+                    >
+                      <MenuItem value="all">Todas</MenuItem>
+                      {availableFilters.locations.map((location) => (
+                        <MenuItem key={location} value={location}>
+                          {location === 'missing' ? 'Sin registro' : location}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+
+                    <TextField
+                      select
+                      fullWidth
+                      label="Usuario"
+                      value={filters.user}
+                      onChange={(event) => handleFilterChange('user')(event as SelectChangeEvent<FilterValue>)}
+                    >
+                      <MenuItem value="all">Todos</MenuItem>
+                      {availableFilters.users.map((user) => (
+                        <MenuItem key={user} value={user}>
+                          {user === 'missing' ? 'Sin registro' : user}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Stack>
+
+                  <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} sx={{ flex: 1 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Correo electrónico"
+                      value={filters.email}
+                      onChange={(event) => handleFilterChange('email')(event as SelectChangeEvent<FilterValue>)}
+                    >
+                      <MenuItem value="all">Todos</MenuItem>
+                      {availableFilters.emails.map((email) => (
+                        <MenuItem key={email} value={email}>
+                          {email === 'missing' ? 'Sin registro' : email}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+
+                    <TextField
+                      select
+                      fullWidth
+                      label="Cargo de contacto"
+                      value={filters.role}
+                      onChange={(event) => handleFilterChange('role')(event as SelectChangeEvent<FilterValue>)}
+                    >
+                      <MenuItem value="all">Todos</MenuItem>
+                      {availableFilters.roles.map((role) => (
+                        <MenuItem key={role} value={role}>
+                          {role === 'missing' ? 'Sin registro' : role}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Stack>
+
+                  <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }} sx={{ flex: 1 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      label="Teléfono"
+                      value={filters.phone}
+                      onChange={(event) => handleFilterChange('phone')(event as SelectChangeEvent<FilterValue>)}
+                    >
+                      <MenuItem value="all">Todos</MenuItem>
+                      {availableFilters.phones.map((phone) => (
+                        <MenuItem key={phone} value={phone}>
+                          {phone === 'missing' ? 'Sin registro' : phone}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+
+                    <TextField
+                      select
+                      fullWidth
+                      label="Ordenar por"
+                      value={sortOption}
+                      onChange={(event) => handleSortChange(event as SelectChangeEvent<SortOption>)}
+                    >
+                      <MenuItem value="alphabetical-asc">Alfabético (A-Z)</MenuItem>
+                      <MenuItem value="alphabetical-desc">Alfabético (Z-A)</MenuItem>
+                      <MenuItem value="creation-newest">Fecha de creación (recientes primero)</MenuItem>
+                      <MenuItem value="creation-oldest">Fecha de creación (antiguas primero)</MenuItem>
+                    </TextField>
+                  </Stack>
+                </Stack>
+              </Stack>
+            </Fade>
+          )}
+
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8 }}>
               <CircularProgress />
@@ -726,7 +672,7 @@ const EmpresasPage = () => {
               Aún no hay empresas registradas.{' '}
               {isCoordinator
                 ? 'Cuando registres una nueva empresa aparecerá aquí.'
-                : 'Consulta más tarde o comunica a tu coordinador.'}
+                : 'Consulta más tarde o comunícate con tu coordinador.'}
             </Alert>
           ) : !error && sortedEmpresas.length === 0 ? (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
@@ -752,7 +698,7 @@ const EmpresasPage = () => {
                         in
                         key={empresa.id}
                         timeout={300}
-                        style={{ transformOrigin: 'top center', transitionDelay: `${animationDelay}ms` }}
+                        style={{ transformOrigin: 'top center', transitionDelay: `${fadeDelay}ms` }}
                         unmountOnExit
                       >
                         <Card
@@ -765,7 +711,7 @@ const EmpresasPage = () => {
                             borderColor: isSelected ? 'primary.main' : 'divider',
                             boxShadow: isSelected ? 8 : 3,
                             transform: isSelected ? 'translateY(-4px)' : 'none',
-                            transition: 'all 0.2s ease-in-out',
+                            transition: 'all 0.25s ease-in-out',
                             '&:hover': {
                               boxShadow: 8,
                               transform: 'translateY(-4px)',
@@ -783,7 +729,9 @@ const EmpresasPage = () => {
                                 {empresa.razon_social}
                               </Typography>
                             }
-                            subheader={empresa.cargo_jefe ? `Contacto: ${empresa.cargo_jefe}` : undefined}
+                            subheader={
+                              empresa.cargo_jefe ? `Contacto: ${empresa.cargo_jefe}` : undefined
+                            }
                           />
 
                           <CardContent sx={{ flexGrow: 1 }}>
@@ -794,70 +742,103 @@ const EmpresasPage = () => {
                                   {empresa.direccion || 'Dirección no registrada'}
                                 </Typography>
                               </Stack>
+
                               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                                 <PersonIcon color="action" fontSize="small" />
                                 <Typography variant="body2" color="text.secondary">
                                   {empresa.jefe_directo || 'Sin jefe directo asignado'}
                                 </Typography>
                               </Stack>
+
                               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                                 <WorkIcon color="action" fontSize="small" />
                                 <Typography variant="body2" color="text.secondary">
-                                  {empresa.cargo_jefe || 'Sin cargo informado'}
+                                  {empresa.cargo_jefe || 'Cargo no registrado'}
                                 </Typography>
                               </Stack>
-                              <Stack direction="row" spacing={1.5} alignItems="center">
+
+                              <Stack direction="row" spacing={1.5} alignItems="flex-start">
                                 <PhoneIcon color="action" fontSize="small" />
                                 <Typography variant="body2" color="text.secondary">
-                                  {empresa.telefono || 'Sin teléfono registrado'}
+                                  {empresa.telefono ? (
+                                    <Tooltip title="Llamar">
+                                      <Typography
+                                        component="a"
+                                        href={`tel:${empresa.telefono}`}
+                                        sx={{
+                                          color: 'inherit',
+                                          textDecoration: 'none',
+                                          '&:hover': { textDecoration: 'underline' },
+                                        }}
+                                      >
+                                        {empresa.telefono}
+                                      </Typography>
+                                    </Tooltip>
+                                  ) : (
+                                    'Teléfono no registrado'
+                                  )}
                                 </Typography>
                               </Stack>
-                              <Stack direction="row" spacing={1.5} alignItems="center">
+
+                              <Stack direction="row" spacing={1.5} alignItems="flex-start">
                                 <EmailIcon color="action" fontSize="small" />
                                 <Typography variant="body2" color="text.secondary">
-                                  {empresa.email || 'Sin correo registrado'}
+                                  {empresa.email ? (
+                                    <Tooltip title="Enviar correo">
+                                      <Typography
+                                        component="a"
+                                        href={`mailto:${empresa.email}`}
+                                        sx={{
+                                          color: 'inherit',
+                                          textDecoration: 'none',
+                                          '&:hover': { textDecoration: 'underline' },
+                                        }}
+                                      >
+                                        {empresa.email}
+                                      </Typography>
+                                    </Tooltip>
+                                  ) : (
+                                    'Correo no registrado'
+                                  )}
                                 </Typography>
                               </Stack>
                             </Stack>
                           </CardContent>
 
-                          <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                              <Button
-                                fullWidth
-                                variant={isSelected ? 'contained' : 'outlined'}
-                                onClick={() => handleSelect(empresa.id)}
-                              >
-                                {isSelected ? 'Seleccionada' : 'Seleccionar'}
-                              </Button>
+                          <Divider sx={{ mx: 3 }} />
 
-                              {isCoordinator && (
-                                <Stack direction="row" spacing={1} sx={{ ml: 1 }}>
-                                  <Tooltip title="Editar">
-                                    <Button
-                                      color="primary"
-                                      variant="outlined"
+                          <CardActions sx={{ px: 3, pb: 3, pt: 2, justifyContent: 'space-between' }}>
+                            <Button
+                              size="small"
+                              variant={selectedEmpresaId === empresa.id ? 'contained' : 'outlined'}
+                              color="primary"
+                              onClick={() => handleSelect(empresa.id)}
+                            >
+                              {selectedEmpresaId === empresa.id ? 'Seleccionada' : 'Seleccionar'}
+                            </Button>
+
+                            {isCoordinator && (
+                              <Stack direction="row" spacing={1}>
+                                <Tooltip title="Editar">
+                                  <span>
+                                    <IconButton size="small" onClick={() => handleEditOpen(empresa)}>
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </span>
+                                </Tooltip>
+                                <Tooltip title="Eliminar">
+                                  <span>
+                                    <IconButton
                                       size="small"
-                                      onClick={() => handleEditOpen(empresa)}
-                                      startIcon={<EditIcon fontSize="small" />}
-                                    >
-                                      Editar
-                                    </Button>
-                                  </Tooltip>
-                                  <Tooltip title="Eliminar">
-                                    <Button
                                       color="error"
-                                      variant="outlined"
-                                      size="small"
                                       onClick={() => handleDeleteOpen(empresa)}
-                                      startIcon={<DeleteIcon fontSize="small" />}
                                     >
-                                      Eliminar
-                                    </Button>
-                                  </Tooltip>
-                                </Stack>
-                              )}
-                            </Stack>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </span>
+                                </Tooltip>
+                              </Stack>
+                            )}
                           </CardActions>
                         </Card>
                       </Grow>
