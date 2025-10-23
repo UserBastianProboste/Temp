@@ -20,7 +20,6 @@ import PracticaProfesionalForm from './pages/PracticaProfesionalForm';
 import CoordinadorPracticas from './pages/coordinadorPracticas';
 import CoordinadorEstudiantes from './pages/coordinadorEstudiantes';
 import CoordinadorEmpresas from './pages/coordinadorEmpresas';
-import CoordinadorCrearUsuario from './pages/coordinadorCrearUsuario';
 import CoordinadorInformesEstudiantes from './pages/coordinadorInformesEstudiantes';
 import CalificarAutoevaluacion from './pages/CalificarAutoevaluacion';
 import ListaAutoevaluaciones from './pages/ListaAutoevaluaciones';
@@ -69,7 +68,6 @@ function App() {
                 <Route path="/coordinador/dashboard" element={<DashboardCoordinador />} />
                 <Route path='/coordinador/practicas' element={<CoordinadorPracticas />} />
                 <Route path='/coordinador/estudiantes' element={<CoordinadorEstudiantes />} />
-                <Route path='/coordinador/crear-usuario' element={<CoordinadorCrearUsuario />} />
                 <Route path='/coordinador/empresas' element={<CoordinadorEmpresas />} />
                 <Route path='/coordinador/informes-estudiante' element={<CoordinadorInformesEstudiantes />} />
                 <Route path="/coordinador/evaluar-informe/:informeId" element={<CoordinadorEvaluarInforme />} />
