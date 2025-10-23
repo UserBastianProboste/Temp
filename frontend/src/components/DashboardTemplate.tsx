@@ -54,17 +54,28 @@ interface DashboardTemplateProps {
 export default function DashboardTemplate({ title, children }: DashboardTemplateProps) {
   const { currentUser, signOut, loading, role, roleLoading } = useAuth();
   const theme = useTheme();
+  // === Indicadores de pantalla para controlar la responsividad del layout ===
   const isWide = useMediaQuery('(min-aspect-ratio: 4/3)');
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const [drawerOpen, setDrawerOpen] = useState(true);
+
+  // === Estado del drawer: inicia sincronizado con el layout actual ===
+  const [drawerOpen, setDrawerOpen] = useState(() => isWide);
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // === Asegurar que el drawer siga al cambio de layout ancho/estrecho ===
   useEffect(() => {
     setDrawerOpen(isWide);
   }, [isWide]);
+
+  // === Cerrar el drawer tras cada navegación en pantallas estrechas ===
+  useEffect(() => {
+    if (!isWide) {
+      setDrawerOpen(false);
+    }
+  }, [isWide, location.pathname]);
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => setAnchorElUser(event.currentTarget);
   const handleCloseUserMenu = () => setAnchorElUser(null);
@@ -175,8 +186,27 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
       </List>
   );
 
-  const faqButton = (
-      <Box sx={{ p: 2 }}>
+  const extraDrawerActions = (
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {/* === Acceso directo externo solicitado === */}
+        <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            component="a"
+            href="https://uacloud.uautonoma.cl/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => {
+              if (!isWide) {
+                setDrawerOpen(false);
+              }
+            }}
+        >
+          Portal UA Cloud
+        </Button>
+
+        {/* === Navegación hacia preguntas frecuentes dentro de la app === */}
         <Button
             fullWidth
             variant="contained"
@@ -195,6 +225,22 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
             }}
         >
           Preguntas frecuentes
+        </Button>
+
+        {/* === Acción directa para cerrar sesión desde el panel lateral === */}
+        <Button
+            fullWidth
+            variant="outlined"
+            color="error"
+            startIcon={<LogoutIcon />}
+            onClick={() => {
+              if (!isWide) {
+                setDrawerOpen(false);
+              }
+              askLogout();
+            }}
+        >
+          Cerrar sesión
         </Button>
       </Box>
   );
@@ -231,14 +277,13 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               {renderMenuItems}
               <Box sx={{ flexGrow: 1 }} />
               <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-              {faqButton}
+              {extraDrawerActions}
             </Drawer>
         ) : (
             <Drawer
                 variant="temporary"
                 open={drawerOpen}
                 onClose={() => setDrawerOpen(false)}
-                ModalProps={{ keepMounted: true }}
                 sx={{
                   '& .MuiDrawer-paper': {
                     width: 240,
@@ -262,7 +307,7 @@ export default function DashboardTemplate({ title, children }: DashboardTemplate
               {renderMenuItems}
               <Box sx={{ flexGrow: 1 }} />
               <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-              {faqButton}
+              {extraDrawerActions}
             </Drawer>
         )}
 
