@@ -1,0 +1,25 @@
+import { lazy } from 'react';
+
+export const LoginPage = lazy(() => import('../pages/login'));
+export const RegisterEstudiantesPage = lazy(() => import('../pages/registerEstudiantes'));
+export const DashboardEstudiantePage = lazy(() => import('../pages/dashboardEstudiante'));
+export const DashboardCoordinadorPage = lazy(() => import('../pages/dashboardCoordinador'));
+export const EstudianteEmpresasPage = lazy(() => import('../pages/estudianteEmpresas'));
+export const SeleccionPracticaPage = lazy(() => import('../pages/SeleccionPractica'));
+export const AutoevaluacionPage = lazy(() => import('../pages/autoevaluacion'));
+export const ForgotPasswordPage = lazy(() => import('../pages/ForgotPassword'));
+export const ResetPasswordPage = lazy(() => import('../pages/ResetPassword'));
+export const RetroalimentacionPage = lazy(() => import('../pages/Retroalimentacion'));
+export const AdjuntarInformesPage = lazy(() => import('../pages/adjuntarInformesEstudiantes'));
+export const HistorialSolicitudesPage = lazy(() => import('../pages/historialSolicitudes'));
+export const PracticaProfesionalFormPage = lazy(() => import('../pages/PracticaProfesionalForm'));
+export const CoordinadorPracticasPage = lazy(() => import('../pages/coordinadorPracticas'));
+export const CoordinadorEstudiantesPage = lazy(() => import('../pages/coordinadorEstudiantes'));
+export const CoordinadorEmpresasPage = lazy(() => import('../pages/coordinadorEmpresas'));
+export const CoordinadorInformesEstudiantesPage = lazy(() => import('../pages/coordinadorInformesEstudiantes'));
+export const CalificarAutoevaluacionPage = lazy(() => import('../pages/CalificarAutoevaluacion'));
+export const ListaAutoevaluacionesPage = lazy(() => import('../pages/ListaAutoevaluaciones'));
+export const PreguntasFrecuentesPage = lazy(() => import('../pages/preguntasFrecuentes'));
+export const EvaluacionSupervisorPublicaPage = lazy(() => import('../pages/EvaluacionSupervisorPublica'));
+export const AuthCallbackPage = lazy(() => import('../pages/AuthCallback'));
+export const CoordinadorEvaluarInformePage = lazy(() => import('../pages/coordinadorEvaluarInforme'));
