@@ -42,6 +42,12 @@ import CheckIcon from '@mui/icons-material/CheckCircle';
 import * as XLSX from 'xlsx';
 import DashboardTemplate from '../components/DashboardTemplate';
 import { supabase } from '../services/supabaseClient';
+import {
+  SEDES_VALIDAS,
+  SEMESTRES_VALIDOS,
+  matchSede,
+  isStudentProfileComplete,
+} from '../utils/studentProfile';
 
 interface StudentRecord {
   id: string;
@@ -93,9 +99,6 @@ const REQUIRED_COLUMNS = ['Nombre', 'Apellido', 'Email', 'Telefono', 'Carrera', 
 const OPTIONAL_PASSWORD_KEYS = ['Password', 'Contraseña', 'Contrasena'];
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 70, 100, 200] as const;
-const SEDES_VALIDAS = ['Sede Llano', 'Sede Providencia', 'Sede Temuco', 'Sede Talca'];
-const SEMESTRES_VALIDOS = Array.from({ length: 12 }, (_, index) => String(index + 1));
-
 const TABLE_COLUMN_STYLES = {
   nombre: {
     width: { xs: '30%', sm: '22%' },
@@ -162,13 +165,6 @@ const normalizePhone = (value: string) => value.replace(/\s+/g, ' ').trim();
 
 const sanitize = (value: string) => value.trim();
 
-const matchSede = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  const match = SEDES_VALIDAS.find(valid => valid.toLowerCase() === trimmed.toLowerCase());
-  return match ?? '';
-};
-
 const normalizeExistingSede = (value: string | null | undefined) => {
   if (!value) return null;
   const stringValue = String(value).trim();
@@ -181,29 +177,7 @@ const normalizeSemestre = (value: string | number | null | undefined) => {
   return stringValue || null;
 };
 
-const isStudentComplete = (student: StudentRecord) => {
-  const hasAllFields =
-    Boolean(student.nombre) &&
-    Boolean(student.apellido) &&
-    Boolean(student.email) &&
-    Boolean(student.telefono) &&
-    Boolean(student.carrera) &&
-    Boolean(student.sede) &&
-    Boolean(student.semestre);
-
-  if (!hasAllFields) {
-    return false;
-  }
-
-  const sedeCanonical = matchSede(String(student.sede));
-  const semestreValue = String(student.semestre ?? '').trim();
-
-  if (!sedeCanonical || !SEMESTRES_VALIDOS.includes(semestreValue)) {
-    return false;
-  }
-
-  return true;
-};
+const isStudentComplete = (student: StudentRecord) => isStudentProfileComplete(student);
 
 const generateTempPassword = () =>
   Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-2);

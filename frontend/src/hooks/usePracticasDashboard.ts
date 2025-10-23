@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PracticeRecord } from '../types/practica';
 import { fetchPracticeRecords } from '../services/practiceDashboardService';
 import { supabase } from '../services/supabaseClient';
@@ -10,10 +10,12 @@ export function usePracticasDashboard() {
   const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [records, setRecords] = useState<PracticeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 10;
-    const collator = useMemo(
+
+  const collator = useMemo(
     () => new Intl.Collator('es', { sensitivity: 'base', usage: 'sort' }),
-    []
+    [],
   );
   const estadoOrder: PracticeRecord['estado'][] = useMemo(
     () => ['Pendiente', 'En progreso', 'Aprobada', 'Completada', 'Rechazada'],
@@ -25,14 +27,33 @@ export function usePracticasDashboard() {
     return () => clearTimeout(handler);
   }, [search]);
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      const data = await fetchPracticeRecords();
-      if (mounted) setRecords(data);
-    };
+  const isMountedRef = useRef(true);
 
-    load();
+  const loadRecords = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const data = await fetchPracticeRecords();
+        if (isMountedRef.current) {
+          setRecords(data);
+        }
+      } catch (error) {
+        console.warn('No fue posible cargar prácticas del dashboard:', error);
+      } finally {
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  useEffect(() => () => {
+    isMountedRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    loadRecords();
 
     // Try to subscribe to realtime changes on the `practicas` table.
     // Use the modern `channel` API if available, otherwise fall back to the older `from(...).on(...)`.
@@ -44,7 +65,7 @@ export function usePracticasDashboard() {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'practicas' }, (payload: any) => {
             console.log('Realtime payload (practicas):', payload);
             // Simple strategy: reload full list on any change
-            load();
+            loadRecords(true);
           })
           .subscribe();
       } else if ((supabase as any).from) {
@@ -53,7 +74,7 @@ export function usePracticasDashboard() {
           .from('practicas')
           .on('*', (payload: any) => {
             console.log('Realtime (legacy) payload (practicas):', payload);
-            load();
+            loadRecords(true);
           })
           .subscribe();
       }
@@ -62,7 +83,6 @@ export function usePracticasDashboard() {
     }
 
     return () => {
-      mounted = false;
       try {
         if (subscription && typeof subscription.unsubscribe === 'function') subscription.unsubscribe();
         if (subscription && typeof (supabase as any).removeChannel === 'function') {
@@ -73,7 +93,7 @@ export function usePracticasDashboard() {
         // ignore
       }
     };
-  }, []);
+  }, [loadRecords]);
 
   useEffect(() => {
     setPage(1);
@@ -136,7 +156,7 @@ export function usePracticasDashboard() {
     console.log(`Rechazar práctica ${id}`);
   };
 
-    const toggleSort = (field: keyof PracticeRecord) => {
+  const toggleSort = (field: keyof PracticeRecord) => {
     if (orderBy === field) {
       setOrderDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
       return;
@@ -146,6 +166,8 @@ export function usePracticasDashboard() {
     setOrderDirection(field === 'fecha_envio' ? 'desc' : 'asc');
   };
 
+
+  const refresh = useCallback(() => loadRecords(false), [loadRecords]);
 
   return {
     search,
@@ -162,5 +184,8 @@ export function usePracticasDashboard() {
     totalItems: sorted.length,
     handleApprove,
     handleReject,
+    records,
+    loading,
+    refresh,
   };
 }
