@@ -982,7 +982,7 @@ const CoordinadorEstudiantes = () => {
                       <strong>Estado</strong>
                     </TableCell>
                     <TableCell align="center" sx={{ ...TABLE_COLUMN_STYLES.acciones }}>
-                      <strong>Acciones</strong>
+                      <strong></strong>
                     </TableCell>
                   </TableRow>
                 </TableHead>
