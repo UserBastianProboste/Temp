@@ -347,6 +347,7 @@ const CoordinadorEmpresas = () => {
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.grey[100] }}>
+                    <TableCell sx={{ fontWeight: 600 }}></TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Empresa</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Ubicación</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Estado</TableCell>
