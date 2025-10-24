@@ -8,15 +8,17 @@ RUN npm ci
 FROM node:20-alpine AS dev
 WORKDIR /app
 ENV NODE_ENV=development
+ARG DEV_PORT=5173
+ENV DEV_PORT=${DEV_PORT}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN sed -i 's/\r$//' docker-entrypoint.sh \
   && chmod +x docker-entrypoint.sh \
   && cp docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh \
   && chmod +x /usr/local/bin/docker-entrypoint.sh
-EXPOSE 5173
+EXPOSE ${DEV_PORT}
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port ${DEV_PORT:-5173}"]
 
 FROM node:20-alpine AS build
 WORKDIR /APP
