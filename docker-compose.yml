@@ -1,15 +1,33 @@
 services:
-  frontend:
-    container_name: frontend
+  frontend-development:
+    container_name: frontend-development
     build:
       context: ./frontend
       target: dev
+      args:
+        DEV_PORT: 5173
     ports:
       - "5173:5173"
+    environment:
+      - DEV_PORT=5173
     volumes:
       - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 5173
+      - frontend_dev_node_modules:/app/node_modules
+  frontend-predeploy:
+    container_name: frontend-predeploy
+    build:
+      context: ./frontend
+      target: dev
+      args:
+        DEV_PORT: 5174
+    ports:
+      - "5174:5174"
+    environment:
+      - DEV_PORT=5174
+    volumes:
+      - ./frontend:/app
+      - frontend_predeploy_node_modules:/app/node_modules
 
 volumes:
-  frontend_node_modules:
+  frontend_dev_node_modules:
+  frontend_predeploy_node_modules:
